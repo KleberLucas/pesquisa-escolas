@@ -1,0 +1,58 @@
+/* Estrutura: topo + mapa em tela cheia + dock (painel) + legenda flutuante */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--texto);
+  font: 14px/1.45 var(--fonte-texto); overflow: hidden;
+}
+.topo {
+  position: fixed; inset: 0 0 auto 0; height: var(--altura-topo); z-index: 1100;
+  display: flex; align-items: center; gap: 12px; padding: 0 20px;
+  background: var(--vidro); backdrop-filter: blur(var(--vidro-blur));
+  border-bottom: 1px solid var(--borda);
+}
+.marca { display: flex; flex-direction: column; line-height: 1.1; margin-right: auto; min-width: 0; }
+.marca h1 { margin: 0; font: 700 18px var(--fonte-titulo); white-space: nowrap; }
+.marca .fita { font-size: 12px; color: var(--texto-2); }
+.acoes { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+
+#mapa { position: fixed; inset: var(--altura-topo) 0 0 0; z-index: 1; background: var(--bg); }
+
+/* Dock: lateral direita no desktop */
+.dock {
+  position: fixed; z-index: 1050; top: calc(var(--altura-topo) + 12px); right: 12px; bottom: 12px;
+  width: 430px; display: flex; flex-direction: column; padding: 0; overflow: hidden;
+}
+.dock-corpo { flex: 1; min-height: 0; overflow: auto; padding: 14px; }
+.alca { display: none; }
+
+/* Legenda sobre o mapa */
+.legenda-flut { position: fixed; z-index: 1000; left: 12px; bottom: 28px; width: 260px; padding: 12px; display: grid; gap: 6px; }
+.legenda-flut small { color: var(--texto-2); font-size: 11.5px; }
+
+@media (max-width: 900px) {
+  .marca .fita { display: none; }
+  .marca h1 { font-size: 15px; }
+  .rot { display: none; }
+  .topo { padding: 0 10px; gap: 6px; }
+  .acoes { gap: 5px; }
+  .acoes .btn:not(.icone) { padding: 7px 10px; }
+  .acoes select { max-width: 92px; padding: 7px 8px; }
+
+  /* Painel vira gaveta inferior recolhível */
+  .dock {
+    top: auto; right: 0; left: 0; bottom: 0; width: auto; height: 46vh; border-radius: 18px 18px 0 0;
+    transition: transform var(--t); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .dock.recolhido { transform: translateY(calc(100% - 92px)); }
+  .alca { display: grid; place-items: center; width: 100%; height: 22px; background: none; border: 0; cursor: pointer; }
+  .alca span { width: 44px; height: 5px; border-radius: 3px; background: var(--texto-2); opacity: .5; }
+  .legenda-flut { left: 8px; bottom: calc(46vh + 8px); width: 200px; padding: 8px; font-size: 12px; }
+  .legenda-flut .tracejado { display: none; }
+  .legenda-flut .chips:not(.sempre) .chip.so-desktop { display: none; }
+}
+@media (max-width: 420px) { .acoes select { max-width: 78px; } }
+.marca { flex: 1 1 0; }
+.marca h1 { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 900px) { .acoes select:disabled { display: none; } }
+@media (max-width: 520px) { .marca h1 { font-size: 14px; } }

@@ -1,0 +1,55 @@
+/* Tema claro (padrão) e escuro. O botão do topo grava data-theme no <html>. */
+:root {
+  color-scheme: light;
+  --bg: #eef3f9;
+  --superficie: #ffffff;
+  --vidro: rgb(255 255 255 / 78%);
+  --borda: rgb(20 50 90 / 12%);
+  --texto: #14233a;
+  --texto-2: #51627a;
+  --primaria: #0a5fb4;
+  --primaria-txt: #ffffff;
+  --destaque: #f08a1c;
+  --aviso-bg: #fff4e0;
+  --aviso-txt: #7a4300;
+  --barra-fundo: #e4ebf4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0c1424;
+    --superficie: #152238;
+    --vidro: rgb(21 34 56 / 78%);
+    --borda: rgb(160 190 230 / 16%);
+    --texto: #e8eefb;
+    --texto-2: #9fb0cb;
+    --primaria: #5aa9ff;
+    --primaria-txt: #07203f;
+    --destaque: #ffb04d;
+    --aviso-bg: #3a2a10;
+    --aviso-txt: #ffd9a0;
+    --barra-fundo: #22324c;
+    --sombra: 0 8px 30px rgb(0 0 0 / 45%);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c1424;
+  --superficie: #152238;
+  --vidro: rgb(21 34 56 / 78%);
+  --borda: rgb(160 190 230 / 16%);
+  --texto: #e8eefb;
+  --texto-2: #9fb0cb;
+  --primaria: #5aa9ff;
+  --primaria-txt: #07203f;
+  --destaque: #ffb04d;
+  --aviso-bg: #3a2a10;
+  --aviso-txt: #ffd9a0;
+  --barra-fundo: #22324c;
+  --sombra: 0 8px 30px rgb(0 0 0 / 45%);
+}
+
+/* Cor do fundo liso do mapa "Estilizado" */
+:root { --mapa-liso: #e7eef6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --mapa-liso: #0b1424; } }
+:root[data-theme="dark"] { --mapa-liso: #0b1424; }

@@ -1,0 +1,30 @@
+/* Variáveis de design (tokens). Cores dos temas ficam em temas.css */
+:root {
+  --fonte-titulo: "Sora", "Segoe UI", system-ui, sans-serif;
+  --fonte-texto: "Inter", "Segoe UI", system-ui, sans-serif;
+  --raio: 16px;
+  --raio-p: 10px;
+  --sombra: 0 8px 30px rgb(15 30 60 / 14%);
+  --sombra-p: 0 2px 8px rgb(15 30 60 / 12%);
+  --vidro-blur: 14px;
+  --t: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --altura-topo: 64px;
+
+  /* Escala sequencial (do menos ao mais) — luminosidade decrescente, segura p/ daltonismo */
+  --seq-0: #dff4e8;
+  --seq-1: #7fcdb4;
+  --seq-2: #3a9fae;
+  --seq-3: #3f61a8;
+  --seq-4: #2b1c63;
+  /* Escala de calor do mapa (bolhas, regiões e legenda). No Minimalista = escala sequencial; o Ilustrado redefine. */
+  --calor-0: var(--seq-0); --calor-1: var(--seq-1); --calor-2: var(--seq-2); --calor-3: var(--seq-3); --calor-4: var(--seq-4);
+  --calor-esmaecido: var(--seq-0);   /* cor do "resto" quando o Top 5 está ligado */
+}
+
+/* Cores dos 5 maiores (selos/pinos) — iguais nos dois visuais; sempre acompanhadas do número, nunca só a cor */
+:root {
+  --top-1: #e3a50f; --top-2: #719739; --top-3: #25789c; --top-4: #e9893a; --top-5: #d27973;
+  /* Categóricas dos gráficos (Okabe-Ito, seguras p/ daltonismo) */
+  --cat-1: #0072b2; --cat-2: #e69f00; --cat-3: #009e73; --cat-4: #cc79a7; --cat-5: #56b4e9; --cat-6: #d55e00; --cat-outros: #8a97a8;
+  --moldura: var(--borda);
+}

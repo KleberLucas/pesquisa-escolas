@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR" data-visual="minimalista">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>De que escola você vem? — Alunos do Senac em Barretos</title>
+  <meta name="description" content="Dashboard e mapa interativo dos bairros de origem dos alunos do Senac em Barretos (dados agregados e anonimizados).">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23274f2b'/%3E%3Ccircle cx='16' cy='14' r='5' fill='%23f8e3b4'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&family=Alfa+Slab+One&family=Lora:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+  <link rel="stylesheet" href="css/variaveis.css">
+  <link rel="stylesheet" href="css/temas.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/componentes.css">
+  <link rel="stylesheet" href="css/ilustrado.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <h1><span class="placa">De que escola você vem?</span></h1>
+      <span class="fita" id="subtitulo">Alunos do Senac em Barretos</span>
+    </div>
+    <div class="acoes">
+      <select id="sel-ano" aria-label="Ano"></select>
+      <select id="sel-comparar" aria-label="Comparar com outro ano" title="Comparar com outro ano" disabled>
+        <option value="">Comparar…</option>
+      </select>
+      <button class="btn" id="btn-apresentar" type="button" title="Modo apresentação (tela cheia)"><span aria-hidden="true">▶</span> <span class="rot">Apresentar</span></button>
+      <button class="btn" id="btn-csv" type="button" title="Baixar CSV agregado da visualização atual"><span aria-hidden="true">⬇</span> <span class="rot">CSV</span></button>
+      <button class="btn" id="btn-png" type="button" title="Baixar imagem (PNG) da tela"><span aria-hidden="true">🖼</span> <span class="rot">PNG</span></button>
+      <button class="btn icone" id="btn-tema" type="button" aria-label="Alternar tema">🌙</button>
+    </div>
+  </header>
+
+  <div id="mapa" role="application" aria-label="Mapa de Barretos com bolhas proporcionais ao número de alunos por bairro"></div>
+
+  <!-- Legenda sempre visível sobre o mapa -->
+  <section class="cartao legenda-flut" id="legenda" aria-label="Legenda do mapa">
+    <button type="button" class="leg-toggle" id="leg-toggle" aria-expanded="false" aria-controls="legenda">Legenda e fundo ▾</button>
+    <div id="leg-normal">
+      <div id="leg-linha-bairros">
+        <small class="leg-titulo">Bairros: alunos por bairro</small>
+        <div class="escala" role="img" aria-label="Escala de cor dos bairros: do menor ao maior número de alunos"></div>
+        <ol class="faixas" id="faixas-bairros" aria-label="Faixas de alunos por bairro, do menor ao maior"></ol>
+        <div class="escala-rotulos"><span>Baixo: <b id="leg-min">3</b></span><span>Alto: <b id="leg-max">–</b></span></div>
+        <small>Tamanho e cor do marcador = nº de alunos</small>
+      </div>
+      <div id="leg-linha-areas">
+        <small class="leg-titulo">Áreas: alunos por região</small>
+        <div class="escala" role="img" aria-label="Escala de cor das regiões: do menor ao maior número de alunos"></div>
+        <ol class="faixas" id="faixas-areas" aria-label="Faixas de alunos por região, do menor ao maior"></ol>
+        <div class="escala-rotulos"><span>Baixo: <b id="leg-min-areas">0</b></span><span>Alto: <b id="leg-max-areas">–</b></span></div>
+      </div>
+    </div>
+    <div id="leg-diff" hidden>
+      <div class="leg-div"><i class="mais"></i> mais alunos em <b id="leg-a"></b><i class="menos"></i> menos</div>
+      <small>Tamanho da bolha = tamanho da diferença</small>
+    </div>
+    <label class="fundo-sel">Fundo
+      <select id="sel-fundo" aria-label="Visual e fundo do mapa">
+        <option value="minimalista">Minimalista</option>
+        <option value="ilustrado">Ilustrado</option>
+        <option value="ruas">Ruas (OSM)</option>
+        <option value="satelite">Satélite</option>
+      </select>
+    </label>
+    <div class="chips">
+      <label class="chip"><input type="checkbox" data-camada="bairros" id="chk-bairros" autocomplete="off"><span>Bairros</span></label>
+      <label class="chip"><input type="checkbox" data-camada="areas" id="chk-areas" autocomplete="off" checked><span>Áreas</span></label>
+      <label class="chip"><input type="checkbox" data-camada="semposicao" id="chk-sempos" autocomplete="off"><span>Bairros sem posição</span></label>
+    </div>
+    <ol class="leg-num" id="leg-reg-num" aria-label="Regiões numeradas no mapa" hidden></ol>
+    <small class="leg-areas" id="leg-explica">Áreas = regiões agrupando bairros próximos (agrupamento estimado). Divisões aproximadas, não oficiais.</small>
+    <button type="button" class="aviso-curto" id="aviso-curto" hidden></button>
+  </section>
+
+  <!-- Bairros sem posição: bolhas em empacotamento circular (sem coordenadas) -->
+  <section class="painel-sempos cartao" id="painel-sempos" hidden aria-label="Bairros sem posição no mapa">
+    <header>
+      <div>
+        <h2>Bairros sem posição no mapa</h2>
+        <strong id="sp-resumo"></strong>
+      </div>
+      <button class="btn icone" id="sp-fechar" type="button" aria-label="Fechar painel de bairros sem posição">✕</button>
+    </header>
+    <p class="nota">Cada bolha é um bairro com alunos que ainda não tem localização. Elas estão agrupadas só por tamanho: <b>não representam lugares</b>.</p>
+    <div class="sp-area"><svg id="sp-svg" role="group" aria-label="Bolhas dos bairros sem posição"></svg></div>
+    <div class="tip-sp" id="sp-tip" hidden></div>
+  </section>
+
+  <!-- Painel lateral (desktop) / gaveta inferior (celular) -->
+  <aside class="dock cartao" id="dock" aria-label="Painel de análise">
+    <button class="alca" id="dock-alca" type="button" aria-expanded="true" aria-label="Recolher ou expandir painel"><span></span></button>
+    <nav class="abas" role="tablist" aria-label="Seções">
+      <button role="tab" aria-selected="true" data-aba="resumo" type="button">Resumo</button>
+      <button role="tab" aria-selected="false" data-aba="filtros" type="button">Filtros <b class="selo-n" id="n-filtros" hidden></b></button>
+      <button role="tab" aria-selected="false" data-aba="escola" type="button" id="tab-escola">Escola</button>
+      <button role="tab" aria-selected="false" data-aba="graficos" type="button">Gráficos</button>
+      <button role="tab" aria-selected="false" data-aba="insights" type="button">Insights</button>
+      <button role="tab" aria-selected="false" data-aba="bairro" type="button" id="tab-bairro" hidden>Bairro</button>
+      <button role="tab" aria-selected="false" data-aba="regiao" type="button" id="tab-regiao" hidden>Região</button>
+    </nav>
+
+    <div class="dock-corpo">
+      <!-- RESUMO -->
+      <section class="aba" id="aba-resumo" role="tabpanel">
+        <div class="kpis">
+          <div class="kpi"><span class="kpi-ico" aria-hidden="true">👥</span><small>Total de alunos</small><strong id="kpi-total"><span class="esqueleto"></span></strong><em id="kpi-comp"></em></div>
+          <div class="kpi"><span class="kpi-ico" aria-hidden="true">📍</span><small>Bairros com ≥ 3 alunos</small><strong id="kpi-bairros">–</strong></div>
+          <div class="kpi"><span class="kpi-ico" aria-hidden="true">🏆</span><small>Bairro com mais alunos</small><strong class="txt" id="kpi-bairro">–</strong></div>
+          <div class="kpi"><span class="kpi-ico" aria-hidden="true">📚</span><small>Curso mais procurado</small><strong class="txt" id="kpi-curso">–</strong></div>
+          <div class="kpi"><span class="kpi-ico" aria-hidden="true">🏫</span><small>Escola mais frequente</small><strong class="txt" id="kpi-escola">–</strong></div>
+        </div>
+        <section class="top5" id="top5" aria-label="Top 5 em destaque" hidden>
+          <h2 id="top5-titulo">Top 5 em destaque</h2>
+          <ol class="top5-lista" id="top5-lista"></ol>
+          <p class="top5-frase" id="top5-frase"></p>
+          <button class="btn" id="btn-top5" type="button" aria-pressed="false">Destacar Top 5 no mapa</button>
+        </section>
+        <div class="aviso" id="aviso-sem-posicao" hidden>
+          <span id="txt-sem-posicao"></span>
+          <ul id="lista-sem-posicao"></ul>
+        </div>
+        <p class="nota" id="nota-fora"></p>
+        <p class="nota">Dados agregados e anonimizados. Grupos com menos de 3 alunos aparecem como "Outros" para proteger a privacidade.</p>
+      </section>
+
+      <!-- FILTROS -->
+      <section class="aba" id="aba-filtros" role="tabpanel" hidden>
+        <label class="campo">Buscar bairro
+          <input type="search" id="f-busca" placeholder="Digite parte do nome" autocomplete="off">
+        </label>
+        <div class="filtros-ativos" id="filtros-ativos" hidden aria-label="Filtros ativos"></div>
+        <h2>Curso</h2>
+        <ul class="opcoes" id="lista-cursos"></ul>
+        <h2>Escola</h2>
+        <label class="linha"><input type="checkbox" id="f-ocultar"> Ocultar "Já concluiu o ensino médio"</label>
+        <ul class="opcoes" id="lista-escolas"></ul>
+        <button class="btn" id="f-limpar" type="button">Limpar filtros</button>
+      </section>
+
+      <!-- ESCOLA → MAPA -->
+      <section class="aba" id="aba-escola" role="tabpanel" hidden>
+        <p class="nota">Escolha uma escola e o mapa destaca onde moram os alunos dela. O resto fica esmaecido.</p>
+        <label class="campo">De que escola você vem?
+          <select id="esc-sel"><option value="">Escolha uma escola…</option></select>
+        </label>
+        <p class="vazio-msg" id="esc-vazio" hidden></p>
+        <div id="esc-perfil" hidden>
+          <div class="b-topo">
+            <h3 id="esc-nome">Escola</h3>
+            <button class="btn icone" id="esc-limpar" type="button" aria-label="Limpar a escola escolhida">✕</button>
+          </div>
+          <span class="selo" id="esc-poucos" hidden></span>
+          <div class="grande" id="esc-total">0</div>
+          <div class="sub" id="esc-pct"></div>
+          <h2>Regiões principais</h2>
+          <ul class="rank-bairros" id="esc-regioes"></ul>
+          <h2>Bairros principais</h2>
+          <ul class="barras" id="esc-bairros"></ul>
+          <h2>Cursos mais comuns</h2>
+          <ul class="barras" id="esc-cursos"></ul>
+        </div>
+      </section>
+
+      <!-- GRÁFICOS -->
+      <section class="aba" id="aba-graficos" role="tabpanel" hidden>
+        <p class="nota">Clique numa barra ou fatia para filtrar o mapa. Clique de novo para remover.</p>
+        <h2>Top bairros</h2>
+        <div class="graf"><canvas id="g-bairros" aria-label="Ranking dos bairros com mais alunos" role="img"></canvas></div>
+        <h2>Cursos</h2>
+        <div class="graf alto"><canvas id="g-cursos" aria-label="Distribuição de alunos por curso" role="img"></canvas></div>
+        <h2>Escolas</h2>
+        <div class="graf"><canvas id="g-escolas" aria-label="Distribuição de alunos por escola" role="img"></canvas></div>
+        <h2>Inscrições por dia <small>(ano todo)</small></h2>
+        <div class="graf"><canvas id="g-dias" aria-label="Inscrições por dia" role="img"></canvas></div>
+      </section>
+
+      <!-- INSIGHTS -->
+      <section class="aba" id="aba-insights" role="tabpanel" hidden>
+        <p class="nota">Gerados automaticamente a partir dos dados filtrados.</p>
+        <div id="lista-insights" class="insights"></div>
+      </section>
+
+      <!-- REGIÃO -->
+      <section class="aba" id="aba-regiao" role="tabpanel" hidden>
+        <div class="b-topo">
+          <h3 id="r-nome">Região</h3>
+          <button class="btn icone" id="r-fechar" type="button" aria-label="Limpar seleção da região">✕</button>
+        </div>
+        <span class="selo">⚠ região estimada (agrupamento aproximado)</span>
+        <div class="grande" id="r-total">0</div>
+        <div class="sub" id="r-pct"></div>
+        <h2>Bairros da região</h2>
+        <ul class="rank-bairros" id="r-bairros"></ul>
+        <h2>Por curso</h2>
+        <ul class="barras" id="r-cursos"></ul>
+        <h2>Por escola</h2>
+        <ul class="barras" id="r-escolas"></ul>
+      </section>
+
+      <!-- BAIRRO -->
+      <section class="aba" id="aba-bairro" role="tabpanel" hidden>
+        <div class="b-topo">
+          <h3 id="g-nome">Bairro</h3>
+          <button class="btn icone" id="g-fechar" type="button" aria-label="Limpar seleção do bairro">✕</button>
+        </div>
+        <span class="selo" id="g-aprox" hidden>⚠ limites aproximados</span>
+        <a class="btn" id="g-posicionar" href="#" target="_blank" rel="noopener" hidden>📍 Posicionar no mapa</a>
+        <div class="grande" id="g-total">0</div>
+        <div class="sub" id="g-pct"></div>
+        <h2>Por curso</h2>
+        <ul class="barras" id="b-cursos"></ul>
+        <h2>Por escola</h2>
+        <ul class="barras" id="b-escolas"></ul>
+      </section>
+    </div>
+  </aside>
+
+  <!-- Barra do modo apresentação -->
+  <div class="apres" id="apres" hidden>
+    <div class="apres-txt"><small id="ap-passo"></small><strong id="ap-titulo"></strong></div>
+    <div class="apres-ctl">
+      <button class="btn icone" id="ap-ant" type="button" aria-label="Anterior">‹</button>
+      <button class="btn icone" id="ap-pausa" type="button" aria-label="Pausar">⏸</button>
+      <button class="btn icone" id="ap-prox" type="button" aria-label="Próximo">›</button>
+      <button class="btn icone" id="ap-sair" type="button" aria-label="Sair da apresentação">✕</button>
+    </div>
+    <div class="apres-barra"><i id="ap-prog"></i></div>
+  </div>
+
+  <div class="dica-mapa" id="dica-mapa" role="status" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <noscript>Este painel precisa de JavaScript.</noscript>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

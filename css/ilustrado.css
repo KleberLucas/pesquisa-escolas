@@ -1,0 +1,240 @@
+/* ==========================================================================
+   Visual "Ilustrado" (mapa de livro de histórias) — SÓ estilo: paleta, tipografia, papel, madeira, faixas.
+   Nenhum desenho decorativo (sem vinhetas, folhagem, céu/campo, bússola). Ativado por <html data-visual="ilustrado">.
+   O tema claro/escuro continua independente (data-theme); aqui ficam as duas versões (dia e noturna sépia).
+   ========================================================================== */
+
+/* ---------- Paleta e tipografia ---------- */
+:root[data-visual="ilustrado"] {
+  --fonte-titulo: "Alfa Slab One", "Rockwell", "Georgia", serif;
+  --fonte-texto: "Lora", "Georgia", "Times New Roman", serif;
+  --altura-topo: 104px;
+
+  /* pergaminho / madeira / verde-floresta (amostrados da referência) */
+  --bg: #ecdcb2;
+  --superficie: #f8e3b4;
+  --vidro: #f8e3b4;
+  --borda: rgba(90, 61, 26, 0.38);
+  --moldura: #7a5a2b;
+  --texto: #34250f;           /* marrom bem escuro sobre pergaminho: contraste ~10:1 */
+  --texto-2: #62492a;         /* ~6:1 sobre o pergaminho */
+  --primaria: #274f2b;
+  --primaria-txt: #fff4d6;
+  --destaque: #c98a00;
+  --aviso-bg: #f0d083;
+  --aviso-txt: #4f3300;
+  --barra-fundo: #e5cd98;
+  --mapa-liso: #cdb685;
+  --sombra: 0 8px 18px rgb(62 40 12 / 30%);
+  --sombra-p: 0 2px 5px rgb(62 40 12 / 28%);
+  --raio: 18px;
+  --raio-p: 12px;
+  --vidro-blur: 0px;
+
+  /* escala de calor: pergaminho → verde-floresta (luminosidade decrescente) */
+  --seq-0: #f3e6c4; --seq-1: #cbd59a; --seq-2: #93a965; --seq-3: #50803f; --seq-4: #2c5a31;
+  /* rampa do mapa em 5 faixas (quantis): verde-folha → amarelo-ouro → laranja → vermelho-claro → vermelho-escuro.
+     A cor nunca vai sozinha: a legenda traz os intervalos em números e o tooltip/painel mostram os valores. */
+  --calor-0: #5fb03a; --calor-1: #efc12f; --calor-2: #ee8c2b; --calor-3: #d9503a; --calor-4: #96211f;
+  --calor-esmaecido: #f3e6c4;   /* resto esmaecido em pergaminho quando o Top 5 está ligado */
+
+  --cat-1: #2f5d34; --cat-2: #e3a50f; --cat-3: #25789c; --cat-4: #e9893a; --cat-5: #d27973; --cat-6: #8a5a2b; --cat-outros: #a89878;
+
+  --madeira-clara: #b08a4a; --madeira-escura: #7d5a28; --madeira-borda: #4e3315;
+  --verde-faixa: #2d5a32; --verde-faixa-2: #1f4424;
+  /* grão de papel (SVG procedural minúsculo, sem imagem) */
+  --papel: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .3 0 0 0 0 .14 0 0 0 .11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Versão noturna (madeira e papel escuros, pergaminho sépia escuro) — mantém contraste */
+:root[data-visual="ilustrado"][data-theme="dark"] {
+  --bg: #1e170e;
+  --superficie: #2d2518;
+  --vidro: #2d2518;
+  --borda: rgba(236, 204, 140, 0.3);
+  --moldura: #b48a47;
+  --texto: #f4e6c4;           /* ~12:1 sobre o papel escuro */
+  --texto-2: #d0ba8c;         /* ~7:1 */
+  --primaria: #86b46f;
+  --primaria-txt: #12200d;
+  --destaque: #f0b93a;
+  --aviso-bg: #4b3a14;
+  --aviso-txt: #ffe6a8;
+  --barra-fundo: #3d321f;
+  --mapa-liso: #2a2115;
+  --sombra: 0 8px 18px rgb(0 0 0 / 55%);
+  --sombra-p: 0 2px 5px rgb(0 0 0 / 55%);
+  --seq-0: #efe2b8; --seq-1: #bccb82; --seq-2: #86ad57; --seq-3: #52924b; --seq-4: #2b6d3f;
+  --calor-0: #74c44a; --calor-1: #f2cb3c; --calor-2: #f09a3a; --calor-3: #e0553f; --calor-4: #b02e2c;
+  --calor-esmaecido: #efe2b8;
+  --madeira-clara: #6c4f27; --madeira-escura: #4b351a; --madeira-borda: #231708;
+  --verde-faixa: #3d7240; --verde-faixa-2: #2a5230;
+  --cat-1: #86b46f; --cat-4: #f0a05a; --cat-6: #c99a5b;
+}
+
+/* ---------- Corpo e cabeçalho ---------- */
+:root[data-visual="ilustrado"] body { background: var(--bg) var(--papel); color: var(--texto); font-family: var(--fonte-texto); }
+:root[data-visual="ilustrado"] .topo {
+  background: var(--bg) var(--papel); backdrop-filter: none; border-bottom: 4px double var(--moldura);
+  align-items: flex-start; padding-top: 10px; box-shadow: 0 4px 10px rgb(62 40 12 / 22%);
+}
+:root[data-visual="ilustrado"] .marca { gap: 0; position: relative; flex: 0 1 auto; margin-right: auto; }
+/* placa de madeira com moldura (só CSS) */
+:root[data-visual="ilustrado"] .marca h1 { overflow: visible; font: 400 1em var(--fonte-titulo); }
+:root[data-visual="ilustrado"] .marca .placa {
+  display: inline-block; position: relative; padding: 9px 30px 10px; white-space: nowrap;
+  font: 400 clamp(17px, 2.2vw, 27px) / 1.1 var(--fonte-titulo); color: #fff2cf; letter-spacing: .01em;
+  text-shadow: 0 2px 0 var(--madeira-borda), 0 0 8px rgb(0 0 0 / 25%);
+  background: repeating-linear-gradient(93deg, rgb(0 0 0 / 8%) 0 2px, transparent 2px 8px), linear-gradient(180deg, var(--madeira-clara), var(--madeira-escura));
+  border: 3px solid var(--madeira-borda); border-radius: 10px 14px 10px 14px;
+  box-shadow: inset 0 0 0 2px rgb(255 232 180 / 45%), 0 5px 9px rgb(62 40 12 / 38%);
+}
+:root[data-visual="ilustrado"] .marca .placa::before,
+:root[data-visual="ilustrado"] .marca .placa::after {   /* pregos */
+  content: ""; position: absolute; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e9d9a8, #5b4220); box-shadow: 0 1px 1px rgb(0 0 0 / 40%);
+}
+:root[data-visual="ilustrado"] .marca .placa::before { left: 10px; }
+:root[data-visual="ilustrado"] .marca .placa::after { right: 10px; }
+/* faixa verde (fita) com pontas em "V": só clip-path */
+:root[data-visual="ilustrado"] .marca .fita {
+  align-self: flex-start; margin: -4px 0 0 18px; padding: 5px 30px 6px; position: relative; z-index: 1;
+  font: 600 13px var(--fonte-texto); color: #fff4d6; letter-spacing: .02em;
+  background: linear-gradient(180deg, var(--verde-faixa), var(--verde-faixa-2));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 13px) 50%, 100% 100%, 0 100%, 13px 50%);
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 35%));
+}
+:root[data-visual="ilustrado"] .acoes { margin-top: 4px; }
+
+/* ---------- Papel: cartões, painéis, tooltips ---------- */
+:root[data-visual="ilustrado"] :is(.cartao, .kpi, .insight, .aviso, .aviso-curto, .rank-bairros button, .leaflet-tooltip.tip, .tip-sp, .toast, .apres, .dica-mapa, .top5, .filtros-ativos) {
+  background-color: var(--superficie); background-image: var(--papel); backdrop-filter: none;
+  border: 2px solid var(--moldura);
+  border-radius: 16px 23px 14px 21px / 21px 14px 23px 16px;     /* bordas "cortadas à mão" (raios assimétricos) */
+  box-shadow: inset 0 0 0 4px rgb(255 247 222 / 38%), var(--sombra);
+  color: var(--texto);
+}
+:root[data-visual="ilustrado"][data-theme="dark"] :is(.cartao, .kpi, .insight, .aviso, .aviso-curto, .rank-bairros button, .leaflet-tooltip.tip, .tip-sp, .toast, .apres, .dica-mapa, .top5, .filtros-ativos) {
+  box-shadow: inset 0 0 0 4px rgb(0 0 0 / 25%), var(--sombra);
+}
+:root[data-visual="ilustrado"] :is(.aviso, .aviso-curto) { background-color: var(--aviso-bg); color: var(--aviso-txt); box-shadow: none; border-radius: 12px 16px 11px 15px / 15px 11px 16px 12px; }
+:root[data-visual="ilustrado"] .kpi { border-width: 2px; padding-left: 52px; position: relative; border-left-color: var(--moldura); }
+:root[data-visual="ilustrado"] .kpi:nth-child(1) { border-left-width: 2px; }
+:root[data-visual="ilustrado"] .kpi strong { font: 400 22px var(--fonte-titulo); color: var(--texto); }
+:root[data-visual="ilustrado"] .kpi:nth-child(1) strong { font-size: 34px; }
+:root[data-visual="ilustrado"] .kpi strong.txt { font: 600 14px/1.25 var(--fonte-texto); }
+:root[data-visual="ilustrado"] .kpi small { font-size: 12px; font-style: italic; }
+:root[data-visual="ilustrado"] .kpi-ico {
+  display: grid; position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  width: 34px; height: 34px; place-items: center; font-size: 17px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f6d36b, var(--top-1)); border: 2px solid var(--moldura); box-shadow: var(--sombra-p);
+}
+:root[data-visual="ilustrado"] .kpi:nth-child(2) .kpi-ico { background: radial-gradient(circle at 35% 30%, #b8d37a, var(--top-2)); }
+:root[data-visual="ilustrado"] .kpi:nth-child(3) .kpi-ico { background: radial-gradient(circle at 35% 30%, #86c4dc, var(--top-3)); }
+:root[data-visual="ilustrado"] .kpi:nth-child(4) .kpi-ico { background: radial-gradient(circle at 35% 30%, #f6b676, var(--top-4)); }
+:root[data-visual="ilustrado"] .kpi:nth-child(5) .kpi-ico { background: radial-gradient(circle at 35% 30%, #efb0aa, var(--top-5)); }
+
+/* ---------- Cabeçalhos em faixa verde ---------- */
+:root[data-visual="ilustrado"] :is(.aba h2, .cartao h2, .top5 h2) {
+  display: inline-block; margin: 16px 0 9px -6px; padding: 4px 26px 5px 20px;
+  font: 700 12px var(--fonte-texto); text-transform: uppercase; letter-spacing: .07em; color: #fff4d6;
+  background: linear-gradient(180deg, var(--verde-faixa), var(--verde-faixa-2));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 11px) 50%, 100% 100%, 0 100%);
+}
+:root[data-visual="ilustrado"] .aba > h2:first-child { margin-top: 0; }
+:root[data-visual="ilustrado"] .legenda-flut h2 { margin: 0 0 6px -6px; }
+:root[data-visual="ilustrado"] .leg-titulo { font-family: var(--fonte-texto); font-weight: 700; }
+
+/* ---------- Abas, botões, seletores e chips ---------- */
+:root[data-visual="ilustrado"] .abas { border-bottom: 2px solid var(--moldura); }
+:root[data-visual="ilustrado"] .abas button { font-family: var(--fonte-texto); font-weight: 600; color: var(--texto-2); border-bottom-width: 0; border-radius: 10px 10px 0 0; padding: 9px 13px; }
+:root[data-visual="ilustrado"] .abas button[aria-selected="true"] { background: linear-gradient(180deg, var(--verde-faixa), var(--verde-faixa-2)); color: #fff4d6; }
+:root[data-visual="ilustrado"] :is(.btn, select) {
+  font-family: var(--fonte-texto); font-weight: 600; color: var(--texto); border: 2px solid var(--moldura);
+  background: linear-gradient(180deg, #f6dd9c, #e2bd69); box-shadow: inset 0 1px 0 rgb(255 255 255 / 55%), var(--sombra-p);
+  border-radius: 12px 16px 11px 15px / 15px 11px 16px 12px;
+}
+:root[data-visual="ilustrado"][data-theme="dark"] :is(.btn, select) { background: linear-gradient(180deg, #5a4526, #43331b); color: var(--texto); }
+:root[data-visual="ilustrado"] :is(.btn, select):hover { filter: brightness(1.06); border-color: var(--madeira-borda); transform: translateY(-1px); }
+:root[data-visual="ilustrado"] .btn.primario, :root[data-visual="ilustrado"] .btn[aria-pressed="true"] { background: linear-gradient(180deg, var(--verde-faixa), var(--verde-faixa-2)); color: #fff4d6; }
+:root[data-visual="ilustrado"] .btn.icone { border-radius: 50%; }
+:root[data-visual="ilustrado"] .chip span { font-family: var(--fonte-texto); font-weight: 600; border: 2px solid var(--moldura); background: #f6dd9c; color: var(--texto); border-radius: 999px; }
+:root[data-visual="ilustrado"][data-theme="dark"] .chip span { background: #43331b; }
+:root[data-visual="ilustrado"] .chip input:checked + span { background: linear-gradient(180deg, var(--verde-faixa), var(--verde-faixa-2)); color: #fff4d6; border-color: var(--madeira-borda); }
+:root[data-visual="ilustrado"] :is(input[type=search], input[type=text]) { background: var(--superficie); border: 2px solid var(--moldura); border-radius: 12px 15px 11px 14px; font-family: var(--fonte-texto); color: var(--texto); }
+
+/* filtros como chips coloridos (a lista vira uma nuvem de chips; o marcado fica preenchido) */
+:root[data-visual="ilustrado"] .opcoes { display: flex; flex-wrap: wrap; gap: 6px; max-height: none; border: 0; background: none; box-shadow: none; padding: 0; overflow: visible; }
+:root[data-visual="ilustrado"] .opcoes li { list-style: none; }
+:root[data-visual="ilustrado"] .opcoes label { --cc: var(--top-1); position: relative; border: 2px solid var(--cc); border-radius: 999px; padding: 3px 11px; gap: 6px; background: color-mix(in srgb, var(--cc) 16%, var(--superficie)); }
+:root[data-visual="ilustrado"] .opcoes li:nth-child(5n+2) label { --cc: var(--top-2); }
+:root[data-visual="ilustrado"] .opcoes li:nth-child(5n+3) label { --cc: var(--top-3); }
+:root[data-visual="ilustrado"] .opcoes li:nth-child(5n+4) label { --cc: var(--top-4); }
+:root[data-visual="ilustrado"] .opcoes li:nth-child(5n+5) label { --cc: var(--top-5); }
+:root[data-visual="ilustrado"] .opcoes input { position: absolute; opacity: 0; pointer-events: none; }
+:root[data-visual="ilustrado"] .opcoes label:has(input:checked) { background: var(--cc); color: #1b1305; font-weight: 700; }
+:root[data-visual="ilustrado"] .opcoes label:has(input:checked) span::before { content: "✓ "; }
+:root[data-visual="ilustrado"] .opcoes label:has(input:focus-visible) { outline: 3px solid var(--destaque); outline-offset: 2px; }
+:root[data-visual="ilustrado"] .opcoes small { color: inherit; opacity: .8; }
+
+/* ---------- Mapa: papel de mapa antigo (sem cenário) ---------- */
+:root[data-visual="ilustrado"] #mapa.fundo-liso.leaflet-container {
+  background-color: var(--mapa-liso);
+  background-image: var(--papel),
+    radial-gradient(ellipse at 50% 46%, rgb(255 246 214 / 40%), transparent 55%, rgb(96 60 22 / 34%) 100%),
+    repeating-linear-gradient(0deg, rgb(90 60 25 / 8%) 0 1px, transparent 1px 96px),
+    repeating-linear-gradient(90deg, rgb(90 60 25 / 8%) 0 1px, transparent 1px 96px);
+  background-size: auto, auto, auto, auto;
+}
+:root[data-visual="ilustrado"] .leaflet-container { font-family: var(--fonte-texto); }
+:root[data-visual="ilustrado"] .leaflet-bar a { background: #f6dd9c; color: var(--texto); border-color: var(--moldura); }
+:root[data-visual="ilustrado"] .leaflet-bar { border: 2px solid var(--moldura); box-shadow: var(--sombra-p); border-radius: 10px; }
+:root[data-visual="ilustrado"] .leaflet-control-attribution { background: rgb(248 227 180 / 85%); color: var(--texto); }
+:root[data-visual="ilustrado"] .leaflet-control-attribution a { color: var(--primaria); }
+:root[data-visual="ilustrado"][data-theme="dark"] .leaflet-bar a { background: #4a3a20; }
+:root[data-visual="ilustrado"][data-theme="dark"] .leaflet-control-attribution { background: rgb(45 37 24 / 85%); }
+/* nas ruas, um leve tom sépia combina com o papel */
+:root[data-visual="ilustrado"] #mapa:not(.fundo-liso):not(.mapa-escuro) .leaflet-tile-pane { filter: sepia(.35) saturate(.9); }
+/* rótulos do mapa em MAIÚSCULAS serifadas */
+:root[data-visual="ilustrado"] :is(.rotulo-mapa span, .rotulo-regiao .r-caixa) { font-family: var(--fonte-texto); text-transform: uppercase; letter-spacing: .03em; }
+:root[data-visual="ilustrado"] .rotulo-regiao .r-titulo { font-family: var(--fonte-titulo); font-weight: 400; font-size: var(--tf, 12.5px); letter-spacing: .02em; }
+:root[data-visual="ilustrado"] .rotulo-regiao .bn, :root[data-visual="ilustrado"] .rotulo-mapa span { font-weight: 700; font-size: 10.5px; }
+:root[data-visual="ilustrado"] .leaflet-tooltip.tip { font-family: var(--fonte-texto); }
+:root[data-visual="ilustrado"] .leaflet-tooltip.tip strong { font-family: var(--fonte-texto); font-weight: 700; }
+
+/* ---------- Painel de bairro / região, gráficos, insights ---------- */
+:root[data-visual="ilustrado"] .grande { font-family: var(--fonte-titulo); font-weight: 400; color: var(--primaria); }
+:root[data-visual="ilustrado"] [data-theme="dark"] .grande, :root[data-visual="ilustrado"][data-theme="dark"] .grande { color: var(--destaque); }
+:root[data-visual="ilustrado"] .b-topo h3, :root[data-visual="ilustrado"] .gaveta h3 { font: 400 22px var(--fonte-titulo); }
+:root[data-visual="ilustrado"] .barras .trilho { border-radius: 8px; border: 1px solid var(--borda); height: 10px; }
+:root[data-visual="ilustrado"] .barras .preench { background: linear-gradient(90deg, var(--seq-2), var(--seq-4)); border-radius: 8px; }
+:root[data-visual="ilustrado"] .insight .ico { background: #f0d083; border: 2px solid var(--moldura); border-radius: 50%; }
+:root[data-visual="ilustrado"] .insight h3 { font: 700 14px var(--fonte-texto); }
+:root[data-visual="ilustrado"] .selo, :root[data-visual="ilustrado"] .selo-n { font-family: var(--fonte-texto); }
+:root[data-visual="ilustrado"] .selo-n { background: var(--top-4); color: #1b1305; }
+:root[data-visual="ilustrado"] .escala { border: 2px solid var(--moldura); border-radius: 8px; height: 14px; }
+:root[data-visual="ilustrado"] .graf canvas { border-radius: 10px; }
+:root[data-visual="ilustrado"] .alca span { background: var(--moldura); }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 900px) {
+  :root[data-visual="ilustrado"] { --altura-topo: 100px; }
+  /* duas linhas: placa do título em cima, ano e botões embaixo */
+  :root[data-visual="ilustrado"] .topo { padding: 6px 10px 0; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+  :root[data-visual="ilustrado"] .marca { flex: 1 1 100%; margin-right: 0; }
+  :root[data-visual="ilustrado"] .marca h1 { text-align: center; }
+  :root[data-visual="ilustrado"] .acoes { flex: 1 1 100%; justify-content: space-between; margin-top: 0; }
+  :root[data-visual="ilustrado"] .marca .placa { padding: 6px 18px 7px; font-size: 15px; }
+  :root[data-visual="ilustrado"] .marca .placa::before { left: 6px; }
+  :root[data-visual="ilustrado"] .marca .placa::after { right: 6px; }
+  :root[data-visual="ilustrado"] .marca .fita { display: none; }
+  :root[data-visual="ilustrado"] .dock { border-radius: 22px 26px 0 0 / 26px 22px 0 0; }
+}
+@media (max-width: 420px) { :root[data-visual="ilustrado"] .marca .placa { font-size: 13px; padding: 5px 14px 6px; } }
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) { :root[data-visual="ilustrado"] * { transition: none !important; animation: none !important; } }
+
+/* ---------- Legenda por faixas (quantis): troca o degradê contínuo por 5 blocos com os intervalos reais ---------- */
+:root[data-visual="ilustrado"] .escala { display: none; }
+:root[data-visual="ilustrado"] .faixas { display: flex; }

@@ -3,13 +3,13 @@
 /* ---------- Rodapé constante ---------- */
 .rodape {
   position: fixed; z-index: 1060; left: 0; right: 0; bottom: 0; height: var(--altura-rodape);
-  padding: 0 8px env(safe-area-inset-bottom, 0px);
+  padding: 4px 14px calc(4px + env(safe-area-inset-bottom, 0px));
   display: flex; align-items: center; justify-content: center; text-align: center;
   background: var(--superficie); border-top: 1px solid var(--borda); color: var(--texto-2);
-  font: 500 12px/1 var(--fonte-texto); letter-spacing: .01em;
+  font: 500 clamp(0.95rem, 0.5vw + 0.82rem, 1.1rem)/1.25 var(--fonte-texto); letter-spacing: .01em;
 }
-.rodape span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-@media (max-width: 520px) { .rodape { font-size: clamp(9.5px, 2.9vw, 12px); padding-inline: 4px; } }
+.rodape span { max-width: 100%; text-wrap: balance; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .rodape { padding-inline: 8px; } }
 
 /* Ilustrado: faixa verde-floresta com texto creme */
 :root[data-visual="ilustrado"] .rodape {
@@ -19,7 +19,7 @@
 }
 
 /* Apresentação em tela cheia: o rodapé fica, mais discreto */
-body.apresentando .rodape { opacity: .72; font-size: 11px; }
+body.apresentando .rodape { opacity: .75; font-size: 0.85rem; }
 
 /* Foco devolvido ao título depois do modal: ponto de partida do leitor de tela, sem contorno chamativo */
 .marca h1:focus { outline: none; }
@@ -33,18 +33,18 @@ body.apresentando .rodape { opacity: .72; font-size: 11px; }
 }
 .bv[hidden] { display: none; }
 .bv-cartao {
-  width: min(500px, 100%); text-align: center; margin: auto;
+  width: min(580px, 100%); text-align: center; margin: auto;
   background: var(--superficie); color: var(--texto);
   border: 1px solid var(--borda); border-radius: 22px; box-shadow: 0 24px 60px rgb(10 20 40 / 35%);
   overflow: hidden; animation: bv-cartao-in .45s cubic-bezier(.2, .8, .2, 1) both;
 }
 .bv-cartao h2 {
-  margin: 0; padding: 34px 28px 10px; font: 700 clamp(22px, 5.4vw, 29px)/1.2 var(--fonte-titulo); color: var(--texto);
+  margin: 0; padding: 36px 28px 12px; font: 700 clamp(26px, 6vw, 36px)/1.2 var(--fonte-titulo); color: var(--texto);
 }
 .bv-corpo { padding: 0 28px 30px; }
-.bv-corpo p { margin: 0 0 24px; font-size: 14px; line-height: 1.5; color: var(--texto-2); }
+.bv-corpo p { margin: 0 0 26px; font-size: clamp(1.15rem, 0.9vw + 0.95rem, 1.5rem); font-weight: 500; line-height: 1.4; color: var(--texto-2); text-wrap: balance; }
 .bv-btn {
-  font: 600 18px/1 var(--fonte-texto); min-width: 200px; max-width: 100%; padding: 16px 40px; cursor: pointer;
+  font: 600 clamp(18px, 1.6vw, 21px)/1 var(--fonte-texto); min-width: 220px; max-width: 100%; padding: 16px 40px; cursor: pointer;
   color: var(--primaria-txt); background: var(--primaria); border: 0; border-radius: 999px;
   box-shadow: 0 6px 16px rgb(10 95 180 / 32%); transition: transform var(--t), filter var(--t), box-shadow var(--t);
 }
@@ -61,15 +61,15 @@ body.apresentando .rodape { opacity: .72; font-size: 11px; }
 }
 :root[data-visual="ilustrado"][data-theme="dark"] .bv-cartao { box-shadow: inset 0 0 0 4px rgb(0 0 0 / 25%), 0 22px 46px rgb(0 0 0 / 65%); }
 :root[data-visual="ilustrado"] .bv-cartao h2 {
-  padding: 22px 28px 20px; font: 400 clamp(22px, 5.6vw, 30px)/1.2 var(--fonte-titulo); color: #fff4d6; letter-spacing: .01em;
+  padding: 24px 28px 22px; font: 400 clamp(25px, 6vw, 36px)/1.2 var(--fonte-titulo); color: #fff4d6; letter-spacing: .01em;
   text-shadow: 0 2px 0 rgb(15 35 18 / 55%);
   background: linear-gradient(180deg, var(--verde-faixa), var(--verde-faixa-2));
   border-bottom: 3px double var(--moldura);
 }
 :root[data-visual="ilustrado"] .bv-corpo { padding: 24px 28px 30px; }
-:root[data-visual="ilustrado"] .bv-corpo p { font: 500 15.5px/1.5 var(--fonte-texto); color: var(--texto); }
+:root[data-visual="ilustrado"] .bv-corpo p { font: 500 clamp(1.15rem, 0.9vw + 0.95rem, 1.5rem)/1.4 var(--fonte-texto); color: var(--texto); }
 :root[data-visual="ilustrado"] .bv-btn {
-  font: 700 19px/1 var(--fonte-texto); color: var(--texto); border: 2px solid var(--moldura);
+  font: 700 clamp(19px, 1.7vw, 22px)/1 var(--fonte-texto); color: var(--texto); border: 2px solid var(--moldura);
   background: linear-gradient(180deg, #f6dd9c, #e2bd69);
   border-radius: 12px 16px 11px 15px / 15px 11px 16px 12px;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 55%), 0 4px 8px rgb(62 40 12 / 35%);

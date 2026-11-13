@@ -1,0 +1,64 @@
+/* Camada de ESCOLAS: triângulos, nomes, mapa de calor e legenda. Nos dois visuais e nos dois temas.
+   A MESMA cor (--escola) vale para os triângulos, o calor e a legenda; é diferente das escalas de bairros/regiões e do pino do Senac. */
+:root { --escola: #7B2CBF; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --escola: #B07CFF; } }
+:root[data-theme="dark"] { --escola: #B07CFF; }
+
+/* ---------- Triângulos ---------- */
+.tri-poly { fill: var(--escola); stroke: #fff; stroke-width: 3.5; stroke-linejoin: round; paint-order: stroke; }
+.escola-tri-wrap { background: none; border: 0; overflow: visible; border-radius: 8px; }
+.escola-tri-wrap:focus-visible { outline: 3px solid var(--destaque); outline-offset: 3px; }
+.escola-tri { position: relative; cursor: pointer; transition: opacity .2s; }
+.escola-tri svg { display: block; overflow: visible; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 45%)); transition: transform .15s; transform-origin: 50% 64%; }
+.escola-tri-wrap:hover svg, .escola-tri-wrap:focus-visible svg { transform: scale(1.12); }
+.escola-tri.dim { opacity: .35; }
+.escola-tri.apagada { opacity: .5; }
+.escola-tri.apagada .tri-poly { fill-opacity: .35; stroke-dasharray: 5 3.5; }
+.escola-tri.destaque svg { filter: drop-shadow(0 0 5px var(--escola)) drop-shadow(0 1px 2px rgb(0 0 0 / 45%)); }
+.escola-tri.destaque .tri-poly { stroke: var(--destaque); }
+
+/* nome ao lado do triângulo (só aparece onde há espaço) */
+.escola-etq {
+  position: absolute; top: 50%; transform: translateY(-50%); white-space: nowrap; pointer-events: none;
+  font: 600 11px/1 var(--fonte-texto); padding: 3px 8px; color: var(--texto);
+  background: var(--superficie); border: 1px solid var(--escola); border-radius: 999px; box-shadow: var(--sombra-p);
+}
+/* Ilustrado: etiqueta de papel com faixa violeta e borda "cortada à mão" */
+:root[data-visual="ilustrado"] .escola-etq {
+  font: 700 11px/1 var(--fonte-texto); padding: 3px 8px 3px 7px; border: 1.5px solid var(--moldura); border-left: 5px solid var(--escola);
+  background-color: var(--superficie); background-image: var(--papel); border-radius: 7px 10px 6px 9px / 9px 6px 10px 7px; box-shadow: var(--sombra-p);
+}
+.tip-escola { white-space: normal; width: max-content; min-width: 210px; max-width: 320px; }
+
+/* ---------- Mapa de calor ---------- */
+.calor-escolas { position: absolute; left: 0; top: 0; pointer-events: none; opacity: .85; }
+
+/* ---------- Botões e legenda ---------- */
+.chip-toggle .mini-tri { flex: none; }
+.mini-tri .tri-poly, .leg-esc-tri .tri-poly { stroke-width: 3; }
+.chip-toggle button[aria-pressed="true"] .tri-poly { fill: #fff; stroke: var(--escola); }
+.leg-escolas { display: grid; gap: 6px; }
+.leg-esc-tri { display: flex; align-items: center; gap: 6px; }
+.escala-calor { height: 10px; border-radius: 5px; border: 1px solid var(--borda); background: linear-gradient(90deg, transparent, var(--escola)), var(--superficie); }
+.leg-esc-sem summary { cursor: pointer; font-size: 11.5px; color: var(--texto-2); }
+.leg-esc-sem summary:focus-visible { outline: 3px solid var(--destaque); outline-offset: 2px; border-radius: 4px; }
+.leg-esc-sem ul { margin: 4px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--texto-2); }
+.leg-escolas[hidden], #leg-calor[hidden], .leg-esc-sem[hidden] { display: none; }
+@media (max-width: 900px) {   /* celular, legenda recolhida: fica só o essencial (a escala do calor continua) */
+  .legenda-flut.recolhida .leg-esc-tri, .legenda-flut.recolhida .leg-esc-sem { display: none; }
+}
+
+/* Celular, legenda recolhida: os botões de camada viram UMA linha rolável (7 botões em várias linhas cobriam o mapa) */
+@media (max-width: 900px) {
+  .legenda-flut.recolhida { width: calc(100vw - 16px); }
+  .legenda-flut.recolhida > * { min-width: 0; }
+  .legenda-flut.recolhida .chips { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; margin-bottom: 2px; padding-right: 26px; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent); }
+  .legenda-flut.recolhida .chips::-webkit-scrollbar { display: none; }
+  .legenda-flut.recolhida .chip { flex: none; }
+}
+
+/* Legenda com botões e notas a mais: nunca passa da área do mapa; se faltar espaço, rola por dentro */
+.legenda-flut { max-height: calc(100vh - var(--altura-topo) - var(--altura-rodape) - 32px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+@media (max-width: 900px) {
+  .legenda-flut { max-height: calc(100vh - var(--altura-topo) - 46vh - var(--altura-rodape) - 20px); }
+}

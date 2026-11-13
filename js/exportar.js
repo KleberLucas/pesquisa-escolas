@@ -40,10 +40,10 @@ function carregarHtml2Canvas() {
 
 const CREDITO = "© Desenvolvido por Kleber Lucas da Silva - Senac Barretos 2026";
 function desenharCredito(canvas) {
-  const ctx = canvas.getContext("2d"), h = Math.round(canvas.height * 0.03) + 14;
+  const ctx = canvas.getContext("2d"), esc = canvas.width / (innerWidth || canvas.width), h = Math.round(44 * esc);
   ctx.fillStyle = "rgb(39 79 43 / 92%)"; ctx.fillRect(0, canvas.height - h, canvas.width, h);
   ctx.fillStyle = "#fff4d6"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.font = `600 ${Math.round(h * 0.5)}px Inter, system-ui, sans-serif`;
+  ctx.font = `600 ${Math.round(16 * esc)}px Inter, system-ui, sans-serif`;
   ctx.fillText(CREDITO, canvas.width / 2, canvas.height - h / 2);
 }
 

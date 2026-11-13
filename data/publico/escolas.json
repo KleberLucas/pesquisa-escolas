@@ -1,0 +1,44 @@
+[
+  {
+    "nome": "ETEC Cel. Raphael Brandão",
+    "curto": "ETEC Raphael Brandão",
+    "lat": -20.555822829122565,
+    "lng": -48.58059947495401
+  },
+  {
+    "nome": "EE Prof. Benedito Pereira Cardoso",
+    "curto": "EE Benedito Cardoso",
+    "lat": -20.570805172836554,
+    "lng": -48.570749134470816
+  },
+  {
+    "nome": "EE Profª Paulina Nunes de Moraes",
+    "curto": "EE Paulina Moraes",
+    "lat": -20.572601388348982,
+    "lng": -48.564275530778175
+  },
+  {
+    "nome": "EE Fábio Junqueira Franco",
+    "curto": "EE Fábio Junqueira",
+    "lat": -20.54604831435201,
+    "lng": -48.55184292097663
+  },
+  {
+    "nome": "EE Cel. Almeida Pinto",
+    "curto": "EE Almeida Pinto",
+    "lat": -20.55488737349178,
+    "lng": -48.56336174611909
+  },
+  {
+    "nome": "Colégio Drummond (Colégio Lotus)",
+    "curto": "Colégio Drummond",
+    "lat": -20.536377807348842,
+    "lng": -48.57476540674719
+  },
+  {
+    "nome": "IFSP - Instituto Federal",
+    "curto": "IFSP",
+    "lat": -20.54084234660969,
+    "lng": -48.54954961913073
+  }
+]

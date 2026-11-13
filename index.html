@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="css/componentes.css">
   <link rel="stylesheet" href="css/ilustrado.css">
   <link rel="stylesheet" href="css/senac.css">
+  <link rel="stylesheet" href="css/escolas.css">
   <link rel="stylesheet" href="css/boasvindas.css">
   <!-- Aplica visual e tema salvos ANTES da primeira pintura: o modal já abre no visual certo, sem piscar. -->
   <script>
@@ -96,6 +97,17 @@
       <label class="chip"><input type="checkbox" data-camada="semposicao" id="chk-sempos" autocomplete="off"><span>Bairros sem posição</span></label>
       <span class="chip chip-toggle" id="chip-senac" hidden><button type="button" id="btn-senac" aria-pressed="false" title="Mostrar o pino do Senac Barretos para analisar a proximidade (atalho: P)"><svg class="mini-pino" viewBox="0 0 40 52" width="12" height="15" aria-hidden="true" focusable="false"><path d="M20 50C20 50 4 31 4 18A16 16 0 0 1 20 2Z" fill="#FF3636"/><path d="M20 2A16 16 0 0 1 36 18C36 31 20 50 20 50Z" fill="#F50000"/><circle cx="20" cy="18" r="6.6" fill="#fff"/></svg> Senac Barretos</button></span>
       <span class="chip chip-toggle" id="chip-aneis" hidden><button type="button" id="btn-aneis" aria-pressed="false" title="Anéis de 1, 2, 3 e 5 km ao redor do Senac">Anéis de distância</button></span>
+      <span class="chip chip-toggle" id="chip-escolas" hidden><button type="button" id="btn-escolas" aria-pressed="false" title="Mostrar as escolas de origem como triângulos (tamanho = nº de alunos do Senac)"><svg class="mini-tri" viewBox="0 0 40 36" width="14" height="13" aria-hidden="true" focusable="false"><polygon class="tri-poly" points="20,3 37,33 3,33"/></svg> Escolas</button></span>
+      <span class="chip chip-toggle" id="chip-calor" hidden><button type="button" id="btn-calor" aria-pressed="false" title="Mapa de calor da concentração de alunos por escola">Calor das escolas</button></span>
+    </div>
+    <div class="leg-escolas" id="leg-escolas" hidden>
+      <small class="leg-esc-tri"><svg viewBox="0 0 40 36" width="14" height="13" aria-hidden="true" focusable="false"><polygon class="tri-poly" points="20,3 37,33 3,33"/></svg> Escola: tamanho = nº de alunos do Senac</small>
+      <div id="leg-calor" hidden>
+        <small class="leg-titulo">Concentração de alunos por escola (calor)</small>
+        <div class="escala-calor" role="img" aria-label="Escala do calor das escolas: de menos a mais alunos"></div>
+        <div class="escala-rotulos"><span>Menos</span><span>Mais</span></div>
+      </div>
+      <details class="leg-esc-sem" id="leg-esc-sem" hidden><summary id="leg-esc-sem-n"></summary><ul id="leg-esc-sem-lista"></ul></details>
     </div>
     <ol class="leg-num" id="leg-reg-num" aria-label="Regiões numeradas no mapa" hidden></ol>
     <small class="leg-areas" id="leg-explica">Áreas = regiões agrupando bairros próximos (agrupamento estimado). Divisões aproximadas, não oficiais.</small>

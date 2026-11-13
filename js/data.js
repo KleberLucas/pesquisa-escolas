@@ -75,6 +75,14 @@ export async function carregarSenac() {
   } catch { return null; }
 }
 
+/** Locais das escolas ([{ nome, lat, lng, curto? }]; data/publico/escolas.json). O nome é igual ao normalizado nos dados. Sem arquivo = []. */
+export async function carregarEscolasGeo() {
+  try {
+    const l = await buscarJSON("data/publico/escolas.json");
+    return Array.isArray(l) ? l.filter((e) => e && typeof e.nome === "string" && Number.isFinite(e.lat) && Number.isFinite(e.lng)) : [];
+  } catch { return []; }
+}
+
 /**
  * Totais das regiões sob os filtros atuais, somando os bairros de cada uma (agg = montarAgregado).
  * Bairros "Outros"/sem posição não entram. Devolve [{ ...região, total, membros, bairros:[{nome,total}], cursos, escolas }].

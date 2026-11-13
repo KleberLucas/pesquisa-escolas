@@ -16,6 +16,8 @@ const FUNDOS = {
   ruas: { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", atrib: '&copy; <a href="https://www.openstreetmap.org/copyright">colaboradores do OpenStreetMap</a>', maxZoom: 19 },
   satelite: { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", atrib: "Imagens &copy; Esri, Maxar, Earthstar Geographics", maxZoom: 19 },
 };
+export const RAIO_CALOR_M = 850;     // raio do mapa de calor das escolas, em metros (ajuste aqui: ~700 a 1000)
+const TRI_MIN = 14, TRI_MAX = 30;   // tamanho (px) dos triângulos das escolas
 const MIN_PUBLICO = 3;   // k mínimo dos dados públicos (igual a MIN_EXIBIR em data.js)
 const ATRIB_PROPRIA = "Mapa de bairros desenhado pelo projeto";
 
@@ -110,6 +112,17 @@ export function htmlCartaoSenac(s, resumo) {
        : "<small>Sem alunos com posição no mapa neste recorte.</small>") +
     "<small>Distâncias aproximadas, em linha reta, a partir do ponto de cada bairro.</small>" +
     (s.provisorio ? "<small>⚠ posição provisória do pino (Centro)</small>" : "");
+}
+
+/** HTML do tooltip de uma escola (nome completo, alunos do Senac, %, cursos, regiões e distância ao Senac). */
+export function htmlTooltipEscola(it, es) {
+  const dist = es.pinoAtivo && it.distSenac != null ? `<small class="dist-senac">≈ ${fmtDist(it.distSenac)} do Senac (linha reta)</small>` : "";
+  if (it.apagada) return `<strong>${esc(it.nome)}</strong><small>Poucos alunos neste recorte (menos de ${MIN_PUBLICO}): sem número, por privacidade</small>${dist}`;
+  const d = es.detalhes?.(it.nome) || { cursos: [], regioes: [] };
+  const cursos = d.cursos.map(([c, n]) => `${esc(c)} (${n})`).join(", ");
+  const regs = d.regioes.map((r) => `${esc(r.nome)} (${r.total})`).join(", ");
+  return `<strong>${esc(it.nome)}</strong><small>${it.total} alunos do Senac vêm desta escola · ${pct1(it.total, es.totalGeral)}% do total</small>` +
+    (cursos ? `<small>Cursos mais comuns: ${cursos}</small>` : "") + (regs ? `<small>Moram em: ${regs}</small>` : "") + dist;
 }
 
 /** HTML do tooltip de um bairro (usado pelo mapa e pelo painel de bairros sem posição). */
@@ -329,7 +342,7 @@ function quebrasDoNome(nome, largura) {
   return res;
 }
 
-export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBairroNome }) {
+export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBairroNome, aoSelecionarEscola }) {
   const mapa = L.map(el, { zoomControl: false, attributionControl: false, minZoom: 10, zoomSnap: 0.25 }).setView(CENTRO, 13);
   L.control.zoom({ position: "topleft" }).addTo(mapa);
   const atrib = L.control.attribution({ position: "bottomleft", prefix: false }).addTo(mapa); // fora da área do painel
@@ -340,6 +353,8 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
   mapa.createPane("contorno").style.zIndex = 450;        // contorno da cidade: ACIMA do preenchimento das regiões
   mapa.createPane("aneis").style.zIndex = 445;           // anéis de distância do Senac: acima das regiões, abaixo do contorno
   mapa.createPane("aneis-rot").style.zIndex = 480;       // rótulos dos anéis
+  mapa.createPane("calor").style.zIndex = 455;           // mapa de calor das escolas: acima das regiões, abaixo de bolhas, triângulos e pino
+  mapa.createPane("escolas").style.zIndex = 620;         // triângulos das escolas: acima de regiões, bolhas e rótulos, abaixo do pino do Senac
   mapa.createPane("senac").style.zIndex = 645;           // pino do Senac: acima de regiões, bolhas e rótulos (e do halo dos destaques)
   mapa.createPane("marcadores").style.zIndex = 470;      // marcadores dos bairros: acima do contorno
   const camadaSilhueta = L.layerGroup().addTo(mapa);
@@ -351,6 +366,7 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
   const camadaRotulos = L.layerGroup().addTo(mapa);
   const camadaPinos = L.layerGroup().addTo(mapa);
   const camadaAneis = L.layerGroup().addTo(mapa);
+  const camadaEscolas = L.layerGroup().addTo(mapa);
   let ultimo = null, primeiraVez = true, todos = null, silhueta = null;
   let pinoSenac = null, chavePino = "";
 
@@ -674,6 +690,89 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
     return marc.length;
   }
 
+
+  /* ---------------------------------------------------------- escolas: triângulos + mapa de calor */
+  let canvasCalor = null, ultimoEscolas = null;
+  const tamTri = (it, max) => (it.apagada ? TRI_MIN : Math.round((TRI_MIN + (TRI_MAX - TRI_MIN) * Math.sqrt(it.total / (max || 1))) * 10) / 10);
+
+  /** Mapa de calor: gradientes radiais (raio em METROS, acompanha o zoom) somados num canvas maior que a tela (pan sem bordas vazias). */
+  function desenharCalor(es) {
+    if (!es?.ativo || !es.calor) { if (canvasCalor) canvasCalor.style.display = "none"; return; }
+    const tam = mapa.getSize(), W = tam.x * 2, H = tam.y * 2;
+    if (!canvasCalor) {
+      canvasCalor = L.DomUtil.create("canvas", "calor-escolas leaflet-zoom-hide");
+      mapa.getPane("calor").appendChild(canvasCalor);
+    }
+    canvasCalor.style.display = "";
+    if (canvasCalor.width !== W || canvasCalor.height !== H) { canvasCalor.width = W; canvasCalor.height = H; }
+    const origem = mapa.containerPointToLayerPoint([-tam.x / 2, -tam.y / 2]);
+    L.DomUtil.setPosition(canvasCalor, origem);
+    const ctx = canvasCalor.getContext("2d");
+    ctx.clearRect(0, 0, W, H);
+    const cor = getComputedStyle(document.documentElement).getPropertyValue("--escola").trim() || "#7B2CBF";
+    const [r, g, b] = hex(/^#[0-9a-f]{6}$/i.test(cor) ? cor : "#7B2CBF");
+    const z = mapa.getZoom();
+    for (const it of es.itens) {
+      if (!(it.total > 0)) continue;
+      const mpp = (156543.03392 * Math.cos((it.lat * Math.PI) / 180)) / 2 ** z, raio = RAIO_CALOR_M / mpp;
+      const p = mapa.latLngToLayerPoint([it.lat, it.lng]).subtract(origem);
+      const w = it.total / (es.max || 1), a = 0.28 + 0.62 * w;      // intensidade pelo nº de alunos
+      const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, raio);
+      gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+      gr.addColorStop(0.45, `rgba(${r},${g},${b},${a * 0.45})`);
+      gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.arc(p.x, p.y, raio, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  mapa.on("moveend", () => { if (ultimoEscolas?.ativo && ultimoEscolas.calor) desenharCalor(ultimoEscolas); });
+
+  /** Triângulos das escolas (centro do triângulo sobre a coordenada), nomes sem sobreposição e tooltip. */
+  function desenharEscolas(es, o) {
+    ultimoEscolas = es;
+    camadaEscolas.clearLayers();
+    desenharCalor(es);
+    if (!es?.ativo) return;
+    const cs = getComputedStyle(document.documentElement);
+    const famX = cs.getPropertyValue("--fonte-texto").trim() || "sans-serif";
+    const tam = mapa.getSize();
+    const pts = es.itens.map((it) => { const s = tamTri(it, es.max), p = mapa.latLngToContainerPoint([it.lat, it.lng]); return { it, s, h: s * 0.9, p }; });
+    // nomes: os maiores primeiro; só entram onde há espaço (livre de outros nomes, triângulos e do pino do Senac); mais nomes com o zoom
+    const ocupados = pts.map((q) => ({ x: q.p.x - q.s / 2 - 1, y: q.p.y - q.h * 0.64 - 1, w: q.s + 2, h: q.h + 2 }));
+    if (o?.senac?.ativo && o.senac.dados) { const sp = mapa.latLngToContainerPoint([o.senac.dados.lat, o.senac.dados.lng]); ocupados.push({ x: sp.x - 20, y: sp.y - 50, w: 160, h: 54 }); }
+    const bate = (a, b) => a.x < b.x + b.w + 2 && a.x + a.w + 2 > b.x && a.y < b.y + b.h + 2 && a.y + a.h + 2 > b.y;
+    const lado = new Map();
+    for (const q of [...pts].sort((a, b) => (a.it.apagada - b.it.apagada) || ((b.it.destaque ? 1 : 0) - (a.it.destaque ? 1 : 0)) || b.it.total - a.it.total)) {
+      if (q.it.apagada && !q.it.destaque) continue;
+      const w = larguraTexto(q.it.curto, 11, 600, famX, false, 0) + 16, h = 18;
+      for (const d of ["d", "e"]) {
+        const r = { x: d === "d" ? q.p.x + q.s / 2 + 3 : q.p.x - q.s / 2 - 3 - w, y: q.p.y - h / 2, w, h };
+        if (r.x < 4 || r.x + w > tam.x - 4 || r.y < 4 || r.y + h > tam.y - 4) continue;
+        if (ocupados.some((c) => bate(r, c))) continue;
+        ocupados.push(r); lado.set(q.it.nome, d); break;
+      }
+    }
+    for (const q of pts) {
+      const it = q.it, d = lado.get(it.nome);
+      const classe = `escola-tri${it.dim ? " dim" : ""}${it.apagada ? " apagada" : ""}${it.destaque ? " destaque" : ""}`;
+      const etq = d ? `<span class="escola-etq lado-${d}" style="${d === "d" ? "left" : "right"}:${q.s + 3}px">${esc(it.curto)}</span>` : "";
+      const icone = L.divIcon({
+        className: "escola-tri-wrap", iconSize: [q.s, q.h], iconAnchor: [q.s / 2, q.h * 0.64],
+        html: `<div class="${classe}" style="width:${q.s}px;height:${q.h}px"><svg viewBox="0 0 40 36" width="${q.s}" height="${q.h}" aria-hidden="true" focusable="false"><polygon class="tri-poly" points="20,3 37,33 3,33"/></svg>${etq}</div>`,
+      });
+      const m = L.marker([it.lat, it.lng], { icon: icone, pane: "escolas", keyboard: true, riseOnHover: false })
+        .bindTooltip(() => htmlTooltipEscola(it, es), { className: "tip tip-escola", direction: "top", offset: [0, -q.h * 0.7] })
+        .on("click", () => aoSelecionarEscola?.(it.nome))
+        .on("keypress", (ev) => { const k = ev.originalEvent; if (k.key === "Enter" || k.key === " ") { k.preventDefault(); aoSelecionarEscola?.(it.nome); } })   // teclado: Enter/Espaço
+        .addTo(camadaEscolas);
+      const el = m.getElement();
+      if (el) {
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", `${it.nome}: ${it.apagada ? "poucos alunos do Senac neste recorte" : `${it.total} alunos do Senac vêm desta escola`}. Pressione Enter para ver o perfil da escola.`);
+      }
+    }
+  }
+
   function desenhar(itens, o) {
     for (const cm of [camadaRegioes, camadaLigacoes, camadaBolhas, camadaRotulos, camadaBrilho, camadaPinos]) cm.clearLayers();
     const c = cores(o);
@@ -681,22 +780,23 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
     contagem.bolhas = desenharBairros(itens, o, c);
     rotulosRegioes(o);
     desenharSenac(o.senac, c);
+    desenharEscolas(o.escolas, o);
 
     // enquadramento: considera tudo o que existe no mapa, mesmo com as camadas desligadas
     const limites = [];
     for (const b of itens) { const p = posicaoBolha(b); if (p) limites.push(L.latLngBounds(p, p)); }
     for (const r of o.regioes || []) limites.push(L.geoJSON({ type: "Feature", geometry: r.geometry }).getBounds());
     if (limites.length) todos = limites.reduce((a, b) => L.latLngBounds(a.getSouthWest(), a.getNorthEast()).extend(b));
-    if (primeiraVez && todos) { enquadrar(todos); primeiraVez = false; }
+    if (primeiraVez && todos) { enquadrar(todos, false); primeiraVez = false; }   // 1º enquadramento sem animação: o mapa não desliza no carregamento
     return contagem;
   }
   // zoom muda o ajuste de colisão e quantos nomes cabem: redesenha
   mapa.on("zoomend", redesenhar);
 
   /** Enquadra considerando o painel lateral (desktop) ou a gaveta inferior (celular). */
-  function enquadrar(bounds) {
+  function enquadrar(bounds, animar = true) {
     const largo = innerWidth > 900;
-    mapa.fitBounds(bounds, { paddingTopLeft: [40, 40], paddingBottomRight: [largo ? 460 : 30, largo ? 40 : Math.round(innerHeight * 0.46) + 30], maxZoom: 14 });
+    mapa.fitBounds(bounds, { paddingTopLeft: [40, 40], paddingBottomRight: [largo ? 460 : 30, largo ? 40 : Math.round(innerHeight * 0.46) + 30], maxZoom: 14, animate: animar });
   }
 
   function atualizar(itens, opcoes) { ultimo = { itens, opcoes }; return desenhar(itens, opcoes); }
@@ -723,7 +823,7 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
   }
 
   /** Leva o pino (ou, com `aneis`, os anéis) para a área livre do mapa, longe da legenda e do painel. */
-  function focarSenac(dados, aneis) {
+  function focarSenac(dados, aneis, animar = true) {
     if (!dados) return;
     const f = areaLivre(), p = L.latLng(dados.lat, dados.lng);
     if (aneis) {
@@ -732,9 +832,17 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
     }
     const pt = mapa.latLngToContainerPoint(p);
     const dentro = pt.x >= f.esq + 24 && pt.x <= f.dir - 130 && pt.y >= f.topo + 52 && pt.y <= f.base - 8;   // sobra espaço p/ a etiqueta (à direita) e a altura do pino
-    if (!dentro) mapa.panBy([pt.x - ((f.esq + f.dir) / 2 - 40), pt.y - ((f.topo + f.base) / 2 + 24)], { duration: 0.5 });
+    if (!dentro) mapa.panBy([pt.x - ((f.esq + f.dir) / 2 - 40), pt.y - ((f.topo + f.base) / 2 + 24)], { animate: animar, duration: 0.5 });
+  }
+
+  /** Ao ligar "Escolas": enquadra os triângulos na área livre do mapa (fora da legenda e do painel). */
+  function focarEscolas(lista) {
+    if (!lista?.length) return;
+    const f = areaLivre(), b = L.latLngBounds(lista.map((e) => [e.lat, e.lng]));
+    const m = f.largo ? 40 : 16;
+    mapa.fitBounds(b, { paddingTopLeft: [f.esq + m, f.topo + m + 8], paddingBottomRight: [f.w - f.dir + m, f.h - f.base + m / 2], maxZoom: 15, duration: 0.6 });
   }
 
   aplicarFundo();
-  return { atualizar, focarSenac, setTema, setFundo, setSilhueta, irPara, reenquadrar: () => todos && enquadrar(todos), mapa, invalidar: () => mapa.invalidateSize() };
+  return { atualizar, focarSenac, focarEscolas, setTema, setFundo, setSilhueta, irPara, reenquadrar: () => todos && enquadrar(todos), mapa, invalidar: () => mapa.invalidateSize() };
 }

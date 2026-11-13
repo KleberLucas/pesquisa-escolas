@@ -2,7 +2,7 @@
  * main.js — ponto de entrada: liga dados, filtros, mapa, gráficos, insights, apresentação e exportação.
  * Todo o estado fica em `estado` (nada de variáveis globais soltas).
  */
-import { carregarAnos, carregarAno, carregarGeografia, carregarRegioes, carregarSenac, totaisRegioes, montarAgregado, classificar, ranking, ranking1, filtrosParaIndices, MIN_EXIBIR } from "./data.js";
+import { carregarAnos, carregarAno, carregarGeografia, carregarRegioes, carregarSenac, carregarEscolasGeo, totaisRegioes, montarAgregado, classificar, ranking, ranking1, filtrosParaIndices, MIN_EXIBIR } from "./data.js";
 import { filtrosVazios, qtdAtivos, alternar, criarInterface } from "./filters.js";
 import { criarMapa, atualizarPaleta, criarFaixas, posicaoBolha } from "./map.js";
 import { haversineKm, fmtDist, analisarProximidade } from "./proximidade.js";
@@ -19,15 +19,16 @@ const pct = (a, b) => ((a / b) * 100).toFixed(1).replace(".", ",") + "%";
 
 const estado = {
   anos: [], ano: null, dados: null, geo: null,
+  escolasGeo: [], calor: false,                     // locais das escolas (data/publico/escolas.json); calor das escolas (não salvos no navegador)
   senac: null, aneis: false,                        // local do Senac (data/publico/senac.json); anéis de distância (não salvos no navegador)
   anoB: "", dadosB: null,                           // comparação
   regioes: [], fundo: "estilizado", visual: "minimalista", top5: false,
   filtros: filtrosVazios(),
-  camadas: { bairros: false, areas: true, semposicao: false, senac: false },   // padrão: só Áreas
+  camadas: { bairros: false, areas: true, semposicao: false, senac: true, escolas: false },   // pino do Senac LIGADO por padrão (não é salvo no navegador)   // padrão: só Áreas
   regiaoSel: null,                                              // id da região selecionada (clique)
   aba: "resumo", agg: null,
 };
-let mapa = null, graficos = null, ui = null, apresentacao = null, semPos = null;
+let mapa = null, graficos = null, ui = null, apresentacao = null, semPos = null, refocarSenac = () => {};
 
 /** O link "Posicionar no mapa" abre o editor, que só funciona localmente: no site público ele nem aparece. */
 const ehLocal = ["localhost", "127.0.0.1", "[::1]", ""].includes(location.hostname);
@@ -61,7 +62,7 @@ function aplicarTema(t) {
 function aoCarregarFontes() {
   if (!document.fonts) return;
   Promise.all([document.fonts.load('1em "Alfa Slab One"'), document.fonts.load("1em Lora"), document.fonts.load('1em Inter')])
-    .then(() => document.fonts.ready).then(() => { if (estado.agg) { graficos.tema(); renderizar(); } }).catch(() => {});
+    .then(() => document.fonts.ready).then(() => { if (estado.agg) { graficos.tema(); renderizar(); refocarSenac(); } }).catch(() => {});
 }
 
 /* ------------------------------------------------------------ visual */
@@ -321,6 +322,68 @@ function renderInsightsEm(raiz, lista) {
   }
 }
 
+/* ------------------------------------------------------------ camada de escolas (triângulos + calor) */
+const NAO_ESCOLA = new Set(["Outros", "Não informado"]);
+/**
+ * Itens da camada de escolas: total de alunos do Senac por escola sob os filtros de ano/curso/busca (o filtro de ESCOLA não reduz
+ * os totais: ele só destaca as escolhidas e esmaece as outras). Células com menos de 3 alunos já vêm suprimidas (total 0 = "poucos alunos").
+ * "Já concluiu o ensino médio", "Outros" e "Não informado" nunca ganham triângulo.
+ */
+function montarEscolas(sn) {
+  const { dados, filtros: f } = estado;
+  const totais = new Map(ranking1(dados, "e", filtrosParaIndices(dados, f, new Set(["escolas", "ocultar"]))));
+  const totalGeral = [...totais.values()].reduce((s, n) => s + n, 0);
+  const itens = estado.escolasGeo
+    .filter((e) => !NAO_ESCOLA.has(e.nome) && !dados.idxConcluiu.has(dados.indice.e.get(e.nome)))
+    .map((e) => {
+      const total = totais.get(e.nome) || 0;
+      return {
+        nome: e.nome, curto: e.curto || e.nome, lat: e.lat, lng: e.lng, total, apagada: total < MIN_EXIBIR,
+        destaque: f.escolas.has(e.nome), dim: f.escolas.size > 0 && !f.escolas.has(e.nome),
+        distSenac: sn ? haversineKm([sn.lat, sn.lng], [e.lat, e.lng]) : null,
+      };
+    });
+  const detalhes = (nome) => {   // cursos mais comuns e regiões onde moram os alunos desta escola (sob os demais filtros)
+    const ff = { ...f, escolas: new Set([nome]), ocultarConcluiu: false, bairros: new Set() };
+    const agg = montarAgregado(dados, estado.geo, ff, new Set(["bairros"]));
+    const cursos = ranking1(dados, "c", agg.fi).filter(([n]) => !NAO_ESCOLA.has(n)).slice(0, 3);
+    const regioes = totaisRegioes(estado.regioes, agg).filter((r) => !r.apagada).sort((a, b) => b.total - a.total).slice(0, 3);
+    return { cursos, regioes };
+  };
+  return { itens, max: Math.max(1, ...itens.map((i) => i.total)), totalGeral, detalhes };
+}
+
+/** Clique/toque num triângulo: seleciona a escola e abre a aba "Escola" (o mapa destaca onde moram os alunos dela). */
+function selecionarEscola(nome) {
+  const f = estado.filtros;
+  estado.regiaoSel = null;
+  if (f.escolas.size === 1 && f.escolas.has(nome)) { f.escolas.clear(); renderizar(); mapa.reenquadrar(); return; }
+  f.escolas.clear(); f.escolas.add(nome);
+  renderizar();
+  abrirAba("escola");
+  $("#dock").classList.remove("recolhido");
+  mapa.reenquadrar();
+}
+
+/** Legenda da camada: triângulo, escala do calor e nota das escolas sem localização (lista expansível). */
+function atualizarLegendaEscolas(es) {
+  const geo = new Set(estado.escolasGeo.map((e) => e.nome));
+  $("#chip-escolas").hidden = !estado.escolasGeo.length;
+  $("#chip-calor").hidden = !es;
+  $("#btn-escolas").setAttribute("aria-pressed", String(!!es));
+  $("#btn-calor").setAttribute("aria-pressed", String(!!es && estado.calor));
+  $("#leg-escolas").hidden = !es;
+  $("#leg-calor").hidden = !(es && estado.calor);
+  const dados = estado.dados;
+  const sem = es && dados ? dados.nomes.e.filter((n) => !NAO_ESCOLA.has(n) && !dados.idxConcluiu.has(dados.indice.e.get(n)) && !geo.has(n)) : [];
+  $("#leg-esc-sem").hidden = !sem.length;
+  if (sem.length) {
+    $("#leg-esc-sem-n").textContent = `${sem.length} ${sem.length === 1 ? "escola sem localização" : "escolas sem localização"}`;
+    const ul = $("#leg-esc-sem-lista");
+    ul.replaceChildren(...sem.map((n) => { const li = document.createElement("li"); li.textContent = n; return li; }));
+  }
+}
+
 /* ------------------------------------------------------------ renderização principal */
 function itensComparacao(aggA, aggB, geo) {
   const mapaB = new Map([...aggB.porBairro.values()].map((b) => [b.nome, b.total]));
@@ -400,6 +463,7 @@ function renderizar() {
   const distSenac = (it) => { const pos = posicaoBolha(it); return pos ? haversineKm([sn.lat, sn.lng], pos) : null; };
   if (sn) for (const b of grupos.noMapa) b.distSenac = distSenac(b);
   const prox = sn ? analisarProximidade(grupos.noMapa, aggMapa.total) : null;
+  const es = estado.camadas.escolas && estado.escolasGeo.length ? montarEscolas(sn) : null;
 
   let itens, max, aggB = null;
   if (emDiff) {
@@ -438,7 +502,9 @@ function renderizar() {
     mostrarBairros: estado.camadas.bairros, mostrarAreas: estado.camadas.areas, regioes, faixas, rotuloA: estado.ano, rotuloB: estado.anoB,
     top5: { ativo: estado.top5 && !emDiff && top.itens.length > 0, modo: top.modo, ranks: top.ranks },
     senac: { ativo: !!sn, aneis: !!sn && estado.aneis, dados: estado.senac, resumo: prox },
+    escolas: es ? { ativo: true, calor: estado.calor, pinoAtivo: !!sn, ...es } : { ativo: false },
   });
+  atualizarLegendaEscolas(es);
   // controles do pino: o botão existe se houver dados do Senac; "Anéis de distância" só com o pino ligado
   $("#chip-senac").hidden = !estado.senac;
   $("#chip-aneis").hidden = !sn;
@@ -610,7 +676,7 @@ async function iniciar() {
   for (const cb of document.querySelectorAll("[data-camada]")) cb.checked = !!estado.camadas[cb.dataset.camada];
   for (const cb of document.querySelectorAll("[data-camada]")) cb.addEventListener("change", () => { estado.camadas[cb.dataset.camada] = cb.checked; renderizar(); });
   addEventListener("resize", () => mapa.invalidar());
-  // Pino do Senac e anéis: DESLIGADOS em toda abertura (nada é salvo no navegador). Atalho: tecla P.
+  // Pino do Senac: LIGADO em toda abertura; anéis: desligados (nada é salvo no navegador). Atalho: tecla P.
   const alternarSenac = () => {
     if (!estado.senac || !estado.agg) return;
     estado.camadas.senac = !estado.camadas.senac;
@@ -618,7 +684,18 @@ async function iniciar() {
     renderizar();
     if (estado.camadas.senac) mapa.focarSenac(estado.senac, false);
   };
+  /** Garante o pino na área livre do mapa (fora da legenda/gaveta), sem animação, no enquadramento inicial. */
+  refocarSenac = () => { if (estado.camadas.senac && estado.senac && !apresentacao?.ativo()) mapa.focarSenac(estado.senac, false, false); };
   $("#btn-senac").addEventListener("click", alternarSenac);
+  // Camada de escolas e calor: DESLIGADAS em toda abertura (nada é salvo no navegador)
+  $("#btn-escolas").addEventListener("click", () => {
+    if (!estado.agg) return;
+    estado.camadas.escolas = !estado.camadas.escolas;
+    if (!estado.camadas.escolas) estado.calor = false;
+    renderizar();
+    if (estado.camadas.escolas) mapa.focarEscolas(estado.escolasGeo);   // traz os triângulos para a área livre do mapa
+  });
+  $("#btn-calor").addEventListener("click", () => { if (!estado.agg) return; estado.calor = !estado.calor; renderizar(); });
   $("#btn-aneis").addEventListener("click", () => {
     estado.aneis = !estado.aneis;
     renderizar();
@@ -630,7 +707,7 @@ async function iniciar() {
     alternarSenac();
   });
 
-  mapa = criarMapa($("#mapa"), { aoSelecionar: selecionarBairro, aoSelecionarRegiao: selecionarRegiao, aoSelecionarBairroNome: selecionarBairro });
+  mapa = criarMapa($("#mapa"), { aoSelecionar: selecionarBairro, aoSelecionarRegiao: selecionarRegiao, aoSelecionarBairroNome: selecionarBairro, aoSelecionarEscola: selecionarEscola });
   $("#esc-sel").addEventListener("change", (e) => {
     estado.filtros.escolas.clear();
     if (e.target.value) estado.filtros.escolas.add(e.target.value);
@@ -676,8 +753,8 @@ async function iniciar() {
   abrirAba("resumo");
 
   try {
-    const [anos, geo, regioes, senac] = await Promise.all([carregarAnos(), carregarGeografia(), carregarRegioes(), carregarSenac()]);
-    estado.anos = anos; estado.geo = geo; estado.regioes = regioes; estado.senac = senac;
+    const [anos, geo, regioes, senac, escolasGeo] = await Promise.all([carregarAnos(), carregarGeografia(), carregarRegioes(), carregarSenac(), carregarEscolasGeo()]);
+    estado.anos = anos; estado.geo = geo; estado.regioes = regioes; estado.senac = senac; estado.escolasGeo = escolasGeo;
     mapa.setSilhueta(geo.silhueta);
     const sel = $("#sel-ano"), comp = $("#sel-comparar");
     for (const a of anos) { sel.add(new Option(a, a)); comp.add(new Option("vs " + a, a)); }
@@ -687,6 +764,7 @@ async function iniciar() {
     sel.addEventListener("change", () => trocarAno(sel.value).catch(mostrarErro));
     comp.addEventListener("change", () => trocarComparacao(comp.value).catch(mostrarErro));
     await trocarAno(sel.value);
+    refocarSenac();   // o pino já vem ligado: confere que está visível no enquadramento inicial
     aoCarregarFontes();
   } catch (e) {
     mostrarErro(e);

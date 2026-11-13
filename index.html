@@ -15,8 +15,31 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/componentes.css">
   <link rel="stylesheet" href="css/ilustrado.css">
+  <link rel="stylesheet" href="css/boasvindas.css">
+  <!-- Aplica visual e tema salvos ANTES da primeira pintura: o modal já abre no visual certo, sem piscar. -->
+  <script>
+    try {
+      var v = localStorage.getItem("visual-v1"), t = localStorage.getItem("tema");
+      if (v === "ilustrado") document.documentElement.dataset.visual = "ilustrado";
+      if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+      else document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    } catch (e) { /* sem armazenamento: valem os padrões do CSS */ }
+  </script>
+  <noscript><style>.bv { display: none !important; }</style></noscript>
 </head>
 <body>
+  <!-- Modal de boas-vindas: aparece a cada abertura (nada é salvo no navegador). Enquanto aberto, #site fica inerte. -->
+  <div class="bv" id="bv">
+    <div class="bv-cartao" role="dialog" aria-modal="true" aria-labelledby="bv-titulo" aria-describedby="bv-texto">
+      <h2 id="bv-titulo">De que escola você vem?</h2>
+      <div class="bv-corpo">
+        <p id="bv-texto">© Desenvolvido por Kleber Lucas da Silva - Senac Barretos 2026</p>
+        <button type="button" class="bv-btn" id="bv-avancar">Avançar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="site" inert>
   <header class="topo">
     <div class="marca">
       <h1><span class="placa">De que escola você vem?</span></h1>
@@ -233,6 +256,10 @@
 
   <div class="dica-mapa" id="dica-mapa" role="status" hidden></div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Rodapé constante (todas as telas, abas, visuais e temas) -->
+  <footer class="rodape" id="rodape"><span>© Desenvolvido por Kleber Lucas da Silva - Senac Barretos 2026</span></footer>
+  </div>
   <noscript>Este painel precisa de JavaScript.</noscript>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>

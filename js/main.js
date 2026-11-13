@@ -10,6 +10,7 @@ import { gerarInsights } from "./insights.js";
 import { criarApresentacao } from "./presentation.js";
 import { exportarCSV, exportarPNG } from "./exportar.js";
 import { criarPainelSemPosicao } from "./sempos.js";
+import { iniciarBoasVindas } from "./boasvindas.js";
 
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => n.toLocaleString("pt-BR");
@@ -520,11 +521,12 @@ function mostrarErro(e) {
   const dica = location.protocol === "file:" ? " Abra o site por um servidor local (python -m http.server) em vez de clicar duas vezes no arquivo." : "";
   div.innerHTML = "<h2>Não foi possível carregar os dados</h2><p></p>";
   div.querySelector("p").textContent = (e.message || String(e)) + dica;
-  document.body.append(div);
+  ($("#site") || document.body).append(div);   // fica sob o modal e só aparece depois de "Avançar"
 }
 
 /* ------------------------------------------------------------ início */
 async function iniciar() {
+  iniciarBoasVindas();   // o modal bloqueia o site até "Avançar"; o carregamento dos dados segue normalmente por trás
   $("#btn-tema").addEventListener("click", () => aplicarTema(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
   for (const b of document.querySelectorAll("[data-aba]")) b.addEventListener("click", () => abrirAba(b.dataset.aba));
   $("#g-fechar").addEventListener("click", () => { estado.filtros.bairros.clear(); renderizar(); mapa.reenquadrar(); });

@@ -16,18 +16,18 @@ body {
 .marca .fita { font-size: 12px; color: var(--texto-2); }
 .acoes { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
 
-#mapa { position: fixed; inset: var(--altura-topo) 0 0 0; z-index: 1; background: var(--bg); }
+#mapa { position: fixed; inset: var(--altura-topo) 0 var(--altura-rodape) 0; z-index: 1; background: var(--bg); }
 
 /* Dock: lateral direita no desktop */
 .dock {
-  position: fixed; z-index: 1050; top: calc(var(--altura-topo) + 12px); right: 12px; bottom: 12px;
+  position: fixed; z-index: 1050; top: calc(var(--altura-topo) + 12px); right: 12px; bottom: calc(var(--altura-rodape) + 12px);
   width: 430px; display: flex; flex-direction: column; padding: 0; overflow: hidden;
 }
 .dock-corpo { flex: 1; min-height: 0; overflow: auto; padding: 14px; }
 .alca { display: none; }
 
 /* Legenda sobre o mapa */
-.legenda-flut { position: fixed; z-index: 1000; left: 12px; bottom: 28px; width: 260px; padding: 12px; display: grid; gap: 6px; }
+.legenda-flut { position: fixed; z-index: 1000; left: 12px; bottom: calc(var(--altura-rodape) + 16px); width: 260px; padding: 12px; display: grid; gap: 6px; }
 .legenda-flut small { color: var(--texto-2); font-size: 11.5px; }
 
 @media (max-width: 900px) {
@@ -41,13 +41,13 @@ body {
 
   /* Painel vira gaveta inferior recolhível */
   .dock {
-    top: auto; right: 0; left: 0; bottom: 0; width: auto; height: 46vh; border-radius: 18px 18px 0 0;
-    transition: transform var(--t); padding-bottom: env(safe-area-inset-bottom, 0px);
+    top: auto; right: 0; left: 0; bottom: var(--altura-rodape); width: auto; height: 46vh; border-radius: 18px 18px 0 0;
+    transition: transform var(--t);   /* o rodapé fica logo abaixo da gaveta e já cobre a área segura do celular */
   }
   .dock.recolhido { transform: translateY(calc(100% - 92px)); }
   .alca { display: grid; place-items: center; width: 100%; height: 22px; background: none; border: 0; cursor: pointer; }
   .alca span { width: 44px; height: 5px; border-radius: 3px; background: var(--texto-2); opacity: .5; }
-  .legenda-flut { left: 8px; bottom: calc(46vh + 8px); width: 200px; padding: 8px; font-size: 12px; }
+  .legenda-flut { left: 8px; bottom: calc(46vh + var(--altura-rodape) + 8px); width: 200px; padding: 8px; font-size: 12px; }
   .legenda-flut .tracejado { display: none; }
   .legenda-flut .chips:not(.sempre) .chip.so-desktop { display: none; }
 }

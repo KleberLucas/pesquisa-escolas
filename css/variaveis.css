@@ -9,6 +9,7 @@
   --vidro-blur: 14px;
   --t: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --altura-topo: 64px;
+  --altura-rodape: calc(28px + env(safe-area-inset-bottom, 0px));   /* rodapé fixo com o crédito */
 
   /* Escala sequencial (do menos ao mais) — luminosidade decrescente, segura p/ daltonismo */
   --seq-0: #dff4e8;

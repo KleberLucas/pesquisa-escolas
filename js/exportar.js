@@ -38,11 +38,22 @@ function carregarHtml2Canvas() {
   return promessaLib;
 }
 
-/** Captura a tela (mapa + painéis) em PNG. */
+const CREDITO = "© Desenvolvido por Kleber Lucas da Silva - Senac Barretos 2026";
+function desenharCredito(canvas) {
+  const ctx = canvas.getContext("2d"), h = Math.round(canvas.height * 0.03) + 14;
+  ctx.fillStyle = "rgb(39 79 43 / 92%)"; ctx.fillRect(0, canvas.height - h, canvas.width, h);
+  ctx.fillStyle = "#fff4d6"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = `600 ${Math.round(h * 0.5)}px Inter, system-ui, sans-serif`;
+  ctx.fillText(CREDITO, canvas.width / 2, canvas.height - h / 2);
+}
+
+/** Captura a tela (mapa + painéis + rodapé com o crédito) em PNG. */
 export async function exportarPNG(ano) {
   const h2c = await carregarHtml2Canvas();
   const fundo = getComputedStyle(document.body).backgroundColor;
-  const canvas = await h2c(document.body, { useCORS: true, backgroundColor: fundo, scale: Math.min(2, devicePixelRatio || 1), logging: false, ignoreElements: (e) => e.classList?.contains("toast") });
+  const canvas = await h2c(document.body, { useCORS: true, backgroundColor: fundo, scale: Math.min(2, devicePixelRatio || 1), logging: false, ignoreElements: (e) => e.classList?.contains("toast") || e.classList?.contains("bv") });
+  // O rodapé (#rodape) faz parte da página e já sai na captura; se faltar por qualquer motivo, desenha a mesma linha de crédito.
+  if (!document.querySelector("#rodape")) desenharCredito(canvas);
   const blob = await new Promise((ok) => canvas.toBlob(ok, "image/png"));
   if (!blob) throw new Error("não foi possível gerar a imagem");
   baixar(blob, `mapa-alunos-barretos-${ano}.png`);

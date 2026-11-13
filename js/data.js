@@ -67,6 +67,14 @@ export async function carregarRegioes() {
   try { return (await buscarJSON("data/publico/regioes.json")).regioes || []; } catch { return []; }
 }
 
+/** Local do Senac Barretos ({ nome, endereco, lat, lng }; data/publico/senac.json). Sem arquivo = o botão do pino some. */
+export async function carregarSenac() {
+  try {
+    const s = await buscarJSON("data/publico/senac.json");
+    return Number.isFinite(s.lat) && Number.isFinite(s.lng) ? s : null;
+  } catch { return null; }
+}
+
 /**
  * Totais das regiões sob os filtros atuais, somando os bairros de cada uma (agg = montarAgregado).
  * Bairros "Outros"/sem posição não entram. Devolve [{ ...região, total, membros, bairros:[{nome,total}], cursos, escolas }].

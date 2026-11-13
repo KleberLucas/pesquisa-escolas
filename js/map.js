@@ -9,6 +9,8 @@
  *     pela escala de calor, com o título e a lista de bairros (com nº de alunos) dentro de cada uma.
  * Modo "diferença" (comparação de anos): cor divergente azul/laranja. Leaflet vem por CDN (global `L`).
  */
+import { ANEIS_KM, fmtDist } from "./proximidade.js";
+
 const CENTRO = [-20.5565, -48.5665];
 const FUNDOS = {
   ruas: { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", atrib: '&copy; <a href="https://www.openstreetmap.org/copyright">colaboradores do OpenStreetMap</a>', maxZoom: 19 },
@@ -95,25 +97,51 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 const sinal = (n) => (n > 0 ? "+" : "") + n;
 const pct1 = (a, b) => ((a / (b || 1)) * 100).toFixed(1).replace(".", ",");
 
+/** Linha "≈ X km do Senac" (só com o pino ligado; estimativa em linha reta a partir do ponto do bairro/centro da região). */
+const linhaDist = (x, o) => (o.senac?.ativo && x.distSenac != null ? `<small class="dist-senac">≈ ${fmtDist(x.distSenac)} do Senac (linha reta)</small>` : "");
+
+/** HTML do cartão do pino do Senac (hover/clique): nome, endereço e resumo da proximidade. */
+export function htmlCartaoSenac(s, resumo) {
+  const r = resumo;
+  const f1 = (n) => n.toFixed(0).replace(".", ",");
+  return `<strong>${esc(s.nome)}</strong><small>${esc(s.endereco)}</small>` +
+    (r ? `<small><b>${f1(r.pctAte3)}%</b> dos alunos a até 3 km · distância média ≈ <b>${fmtDist(r.media)}</b></small>` +
+         `<small>Considera ${r.considerados.toLocaleString("pt-BR")} de ${r.totalGeral.toLocaleString("pt-BR")} alunos (bairros com posição no mapa e 3+ alunos)</small>`
+       : "<small>Sem alunos com posição no mapa neste recorte.</small>") +
+    "<small>Distâncias aproximadas, em linha reta, a partir do ponto de cada bairro.</small>" +
+    (s.provisorio ? "<small>⚠ posição provisória do pino (Centro)</small>" : "");
+}
+
 /** HTML do tooltip de um bairro (usado pelo mapa e pelo painel de bairros sem posição). */
 export function htmlTooltip(b, o) {
   if (b.contexto) return `<strong>${esc(b.nome)}</strong><small>Sem alunos desta escola para exibir (menos de ${MIN_PUBLICO})</small>`;
   if (o.modo === "diff") {
-    return `<strong>${esc(b.nome)}</strong><small>${o.rotuloA}: ${b.totalA} · ${o.rotuloB}: ${b.totalB}</small><small>Diferença: ${sinal(b.diff)}</small>`;
+    return `<strong>${esc(b.nome)}</strong><small>${o.rotuloA}: ${b.totalA} · ${o.rotuloB}: ${b.totalB}</small><small>Diferença: ${sinal(b.diff)}</small>${linhaDist(b, o)}`;
   }
   const cursos = [...b.cursos.entries()].sort((x, y) => y[1] - x[1]).filter(([c]) => c !== "Outros").slice(0, 2).map(([c, n]) => `${esc(c)} (${n})`).join(", ");
-  return `<strong>${esc(b.nome)}</strong><small>${b.total} alunos · ${pct1(b.total, o.totalGeral)}% do total</small>${cursos ? `<small>${cursos}</small>` : ""}`;
+  return `<strong>${esc(b.nome)}</strong><small>${b.total} alunos · ${pct1(b.total, o.totalGeral)}% do total</small>${cursos ? `<small>${cursos}</small>` : ""}${linhaDist(b, o)}`;
 }
 
 /** HTML do tooltip de uma região: total, %, nº de bairros e os 3 bairros com mais alunos. */
 export function htmlTooltipRegiao(r, o) {
   if (o.modo === "diff") {
-    return `<strong>${esc(r.nome)}</strong><small>${o.rotuloA}: ${r.totalA} · ${o.rotuloB}: ${r.totalB}</small><small>Diferença: ${sinal(r.diff)}</small><small>⚠ divisão estimada</small>`;
+    return `<strong>${esc(r.nome)}</strong><small>${o.rotuloA}: ${r.totalA} · ${o.rotuloB}: ${r.totalB}</small><small>Diferença: ${sinal(r.diff)}</small>${linhaDist(r, o)}<small>⚠ divisão estimada</small>`;
   }
   if (r.apagada) return `<strong>${esc(r.nome)}</strong><small>Sem alunos neste recorte (${r.membros} ${r.membros === 1 ? "bairro" : "bairros"})</small>`;
   const top = r.bairros.slice(0, 3).map((b) => `${esc(b.nome)} (${b.total})`).join(", ");
   return `<strong>${esc(r.nome)}</strong><small>${r.total} alunos · ${pct1(r.total, o.totalGeral)}% do total</small>` +
-    `<small>${r.membros} ${r.membros === 1 ? "bairro" : "bairros"}${top ? ": " + top : ""}</small><small>⚠ região estimada (agrupamento aproximado)</small>`;
+    `<small>${r.membros} ${r.membros === 1 ? "bairro" : "bairros"}${top ? ": " + top : ""}</small>${linhaDist(r, o)}<small>⚠ região estimada (agrupamento aproximado)</small>`;
+}
+
+/** Gota de localização do Senac (SVG inline, dois tons de vermelho, círculo branco e halo branco). A ponta (20,50) é o ponto exato. */
+export const PINO_W = 36, PINO_H = 46.8, PINO_ANCORA = [18, 45];
+const D_PINO = "M20 50C20 50 4 31 4 18A16 16 0 0 1 36 18C36 31 20 50 20 50Z";
+export function svgPinoSenac() {
+  return `<svg viewBox="0 0 40 52" width="${PINO_W}" height="${PINO_H}" aria-hidden="true" focusable="false">` +
+    `<path d="${D_PINO}" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>` +
+    `<path d="M20 50C20 50 4 31 4 18A16 16 0 0 1 20 2Z" fill="#FF3636"/>` +
+    `<path d="M20 2A16 16 0 0 1 36 18C36 31 20 50 20 50Z" fill="#F50000"/>` +
+    `<circle cx="20" cy="18" r="6.6" fill="#fff"/></svg>`;
 }
 
 /** Centroide (ponderado pela área) do maior anel do polígono — posição do marcador de um bairro com área real. */
@@ -310,6 +338,9 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
   mapa.createPane("silhueta").style.zIndex = 250;        // acima dos tiles, abaixo de tudo que é dado
   mapa.createPane("brilho").style.zIndex = 440;          // brilho dos 5 destaques
   mapa.createPane("contorno").style.zIndex = 450;        // contorno da cidade: ACIMA do preenchimento das regiões
+  mapa.createPane("aneis").style.zIndex = 445;           // anéis de distância do Senac: acima das regiões, abaixo do contorno
+  mapa.createPane("aneis-rot").style.zIndex = 480;       // rótulos dos anéis
+  mapa.createPane("senac").style.zIndex = 645;           // pino do Senac: acima de regiões, bolhas e rótulos (e do halo dos destaques)
   mapa.createPane("marcadores").style.zIndex = 470;      // marcadores dos bairros: acima do contorno
   const camadaSilhueta = L.layerGroup().addTo(mapa);
   const camadaContorno = L.layerGroup().addTo(mapa);
@@ -319,7 +350,48 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
   const camadaBrilho = L.layerGroup().addTo(mapa);
   const camadaRotulos = L.layerGroup().addTo(mapa);
   const camadaPinos = L.layerGroup().addTo(mapa);
+  const camadaAneis = L.layerGroup().addTo(mapa);
   let ultimo = null, primeiraVez = true, todos = null, silhueta = null;
+  let pinoSenac = null, chavePino = "";
+
+  /** Pino do Senac + anéis de distância. O pino é recriado só quando muda o visual/tema/posição (mantém o cartão aberto). */
+  function desenharSenac(sn, c) {
+    camadaAneis.clearLayers();
+    if (!sn?.ativo || !sn.dados) { if (pinoSenac) { mapa.removeLayer(pinoSenac); pinoSenac = null; chavePino = ""; } return; }
+    const { lat, lng } = sn.dados, centro = [lat, lng];
+    const html = htmlCartaoSenac(sn.dados, sn.resumo);
+    const chave = `${ehIlustrado()}|${tema}|${lat},${lng}`;
+    if (!pinoSenac || chave !== chavePino) {
+      if (pinoSenac) mapa.removeLayer(pinoSenac);
+      const icone = L.divIcon({
+        className: "pino-senac-wrap", iconSize: [PINO_W, PINO_H], iconAnchor: PINO_ANCORA,
+        html: `<div class="pino-senac">${svgPinoSenac()}<span class="pino-senac-etq" aria-hidden="true">${ehIlustrado() ? "SENAC BARRETOS" : "Senac Barretos"}</span></div>`,
+      });
+      pinoSenac = L.marker(centro, { icon: icone, pane: "senac", keyboard: true, riseOnHover: false })
+        .bindTooltip(html, { className: "tip tip-senac", direction: "top", offset: [0, -46] })
+        .bindPopup(html, { className: "popup-senac", offset: [0, -42], maxWidth: 300 })
+        .on("popupopen", () => pinoSenac.closeTooltip())
+        .addTo(mapa);
+      chavePino = chave;
+      const el = pinoSenac.getElement();
+      if (el) {   // acessível por teclado (Enter abre o cartão) e com texto alternativo
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", `${sn.dados.nome}, ${sn.dados.endereco}. Pressione Enter para ver a proximidade dos alunos.`);
+      }
+    } else {
+      pinoSenac.setTooltipContent(html);
+      pinoSenac.setPopupContent(html);
+    }
+    if (sn.aneis) {
+      for (const km of ANEIS_KM) {
+        L.circle(centro, { pane: "aneis", radius: km * 1000, fill: false, color: c.borda, weight: 1.4, opacity: 0.75, dashArray: "6 5", interactive: false }).addTo(camadaAneis);
+        L.marker([lat + (km * 1000) / M_LAT, lng], {
+          pane: "aneis-rot", interactive: false, keyboard: false,
+          icon: L.divIcon({ className: "anel-rot-wrap", iconSize: [0, 0], html: `<span class="anel-rot">${km} km</span>` }),
+        }).addTo(camadaAneis);
+      }
+    }
+  }
 
   /** Silhueta da área urbana (IBGE): preenchimento suave e contorno fino, só no fundo "Estilizado". */
   function desenharSilhueta() {
@@ -608,6 +680,7 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
     const contagem = { areas: desenharRegioes(o, c), bolhas: 0 };
     contagem.bolhas = desenharBairros(itens, o, c);
     rotulosRegioes(o);
+    desenharSenac(o.senac, c);
 
     // enquadramento: considera tudo o que existe no mapa, mesmo com as camadas desligadas
     const limites = [];
@@ -638,6 +711,30 @@ export function criarMapa(el, { aoSelecionar, aoSelecionarRegiao, aoSelecionarBa
     }
   }
 
+  /** Retângulo do mapa que sobra livre (coordenadas do container): fora do painel lateral/gaveta, da legenda, do topo e do rodapé. */
+  function areaLivre() {
+    const box = el.getBoundingClientRect(), leg = document.getElementById("legenda")?.getBoundingClientRect(), dock = document.getElementById("dock")?.getBoundingClientRect();
+    const largo = innerWidth > 900;
+    let esq = 12, dir = box.width - 12, topo = 12, base = box.height - 12;
+    if (largo) { if (leg) esq = Math.max(esq, leg.right - box.left + 16); if (dock) dir = Math.min(dir, dock.left - box.left - 16); }
+    else if (leg) base = Math.min(base, leg.top - box.top - 12);   // celular: a legenda fica sobre a gaveta, o espaço livre é a faixa de cima
+    base = Math.max(base, topo + 72);
+    return { esq, dir, topo, base, w: box.width, h: box.height, largo };
+  }
+
+  /** Leva o pino (ou, com `aneis`, os anéis) para a área livre do mapa, longe da legenda e do painel. */
+  function focarSenac(dados, aneis) {
+    if (!dados) return;
+    const f = areaLivre(), p = L.latLng(dados.lat, dados.lng);
+    if (aneis) {
+      mapa.flyToBounds(p.toBounds(f.largo ? 10000 : 6000), { paddingTopLeft: [f.esq, f.topo], paddingBottomRight: [f.w - f.dir, f.h - f.base], maxZoom: 14, duration: 0.6 });
+      return;
+    }
+    const pt = mapa.latLngToContainerPoint(p);
+    const dentro = pt.x >= f.esq + 24 && pt.x <= f.dir - 130 && pt.y >= f.topo + 52 && pt.y <= f.base - 8;   // sobra espaço p/ a etiqueta (à direita) e a altura do pino
+    if (!dentro) mapa.panBy([pt.x - ((f.esq + f.dir) / 2 - 40), pt.y - ((f.topo + f.base) / 2 + 24)], { duration: 0.5 });
+  }
+
   aplicarFundo();
-  return { atualizar, setTema, setFundo, setSilhueta, irPara, reenquadrar: () => todos && enquadrar(todos), mapa, invalidar: () => mapa.invalidateSize() };
+  return { atualizar, focarSenac, setTema, setFundo, setSilhueta, irPara, reenquadrar: () => todos && enquadrar(todos), mapa, invalidar: () => mapa.invalidateSize() };
 }

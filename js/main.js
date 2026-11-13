@@ -2,9 +2,10 @@
  * main.js — ponto de entrada: liga dados, filtros, mapa, gráficos, insights, apresentação e exportação.
  * Todo o estado fica em `estado` (nada de variáveis globais soltas).
  */
-import { carregarAnos, carregarAno, carregarGeografia, carregarRegioes, totaisRegioes, montarAgregado, classificar, ranking, ranking1, filtrosParaIndices, MIN_EXIBIR } from "./data.js";
+import { carregarAnos, carregarAno, carregarGeografia, carregarRegioes, carregarSenac, totaisRegioes, montarAgregado, classificar, ranking, ranking1, filtrosParaIndices, MIN_EXIBIR } from "./data.js";
 import { filtrosVazios, qtdAtivos, alternar, criarInterface } from "./filters.js";
-import { criarMapa, atualizarPaleta, criarFaixas } from "./map.js";
+import { criarMapa, atualizarPaleta, criarFaixas, posicaoBolha } from "./map.js";
+import { haversineKm, fmtDist, analisarProximidade } from "./proximidade.js";
 import { criarGraficos } from "./charts.js";
 import { gerarInsights } from "./insights.js";
 import { criarApresentacao } from "./presentation.js";
@@ -18,10 +19,11 @@ const pct = (a, b) => ((a / b) * 100).toFixed(1).replace(".", ",") + "%";
 
 const estado = {
   anos: [], ano: null, dados: null, geo: null,
+  senac: null, aneis: false,                        // local do Senac (data/publico/senac.json); anéis de distância (não salvos no navegador)
   anoB: "", dadosB: null,                           // comparação
   regioes: [], fundo: "estilizado", visual: "minimalista", top5: false,
   filtros: filtrosVazios(),
-  camadas: { bairros: false, areas: true, semposicao: false },   // padrão: só Áreas
+  camadas: { bairros: false, areas: true, semposicao: false, senac: false },   // padrão: só Áreas
   regiaoSel: null,                                              // id da região selecionada (clique)
   aba: "resumo", agg: null,
 };
@@ -77,7 +79,7 @@ function abrirAba(nome) {
   for (const b of document.querySelectorAll("[data-aba]")) b.setAttribute("aria-selected", String(b.dataset.aba === nome));
   for (const s of document.querySelectorAll(".aba")) s.hidden = s.id !== "aba-" + nome;
   document.querySelector(`[data-aba="${nome}"]`)?.scrollIntoView?.({ inline: "nearest", block: "nearest" });   // abas rolam na horizontal no celular
-  if (nome === "graficos") requestAnimationFrame(() => graficos.redimensionar());
+  if (nome === "graficos" || nome === "proximidade") requestAnimationFrame(() => graficos.redimensionar());
 }
 
 /* ------------------------------------------------------------ KPIs */
@@ -172,6 +174,9 @@ function atualizarBairro(agg, grupos) {
   $("#g-total").textContent = fmt(b.total);
   $("#g-pct").textContent = `${pct(b.total, estado.dados.total)} do total de alunos`;
   $("#g-aprox").hidden = true;
+  const dg = $("#g-dist"), nb = grupos.noMapa.find((x) => x.nome === b.nome);
+  dg.hidden = !(estado.camadas.senac && nb?.distSenac != null);
+  if (!dg.hidden) dg.textContent = `≈ ${fmtDist(nb.distSenac)} do Senac (estimativa em linha reta, a partir do ponto do bairro)`;
   barras($("#b-cursos"), ranking(b.cursos), b.total);
   barras($("#b-escolas"), ranking(b.escolas), b.total);
 }
@@ -184,6 +189,9 @@ function atualizarRegiao(regioes, totalGeral) {
   $("#r-nome").textContent = r.nome;
   $("#r-total").textContent = fmt(r.total);
   $("#r-pct").textContent = r.apagada ? "sem alunos neste recorte" : `${pct(r.total, totalGeral || 1)} do total · ${r.membros} bairros na região`;
+  const dr = $("#r-dist");
+  dr.hidden = !(estado.camadas.senac && r.distSenac != null);
+  if (!dr.hidden) dr.textContent = `≈ ${fmtDist(r.distSenac)} do Senac (estimativa em linha reta, a partir do centro da região)`;
   const ul = $("#r-bairros");
   ul.replaceChildren();
   for (const b of r.bairros) {   // clicar num bairro da lista abre o painel daquele bairro
@@ -216,7 +224,7 @@ function escolaEmFoco() {
   return escolasListadas().some(([n]) => n === nome) ? nome : null;
 }
 
-function atualizarEscola(aggMapa, regioes) {
+function atualizarEscola(aggMapa, regioes, prox) {
   const { dados, filtros: f } = estado;
   const sel = $("#esc-sel");
   const lista = escolasListadas();
@@ -237,6 +245,9 @@ function atualizarEscola(aggMapa, regioes) {
   animarNumero($("#esc-total"), total);
   $("#esc-pct").textContent = `${pct(total, dados.total || 1)} dos ${fmt(dados.total)} alunos de ${estado.ano}` +
     (noMapa < total ? ` · ${fmt(noMapa)} com bairro exibível no mapa` : "");
+  const de = $("#esc-dist");
+  de.hidden = !prox;
+  if (prox) de.textContent = `Distância média até o Senac: ≈ ${fmtDist(prox.media)} em linha reta (${fmt(prox.considerados)} de ${fmt(noMapa)} alunos, bairros com posição)`;
   const poucos = $("#esc-poucos");
   const mapeados = regioes.filter((r) => !r.apagada).length;
   poucos.hidden = !(total < 10 || mapeados === 0);
@@ -263,9 +274,41 @@ function atualizarEscola(aggMapa, regioes) {
   barras($("#esc-cursos"), cursos, todosCursos.reduce((s, [, n]) => s + n, 0) || 1);
 }
 
+/* ------------------------------------------------------------ aba Proximidade (pino do Senac ligado) */
+const f0 = (n) => Math.round(n).toLocaleString("pt-BR");
+function atualizarProximidade(prox) {
+  $("#px-provisorio").hidden = !estado.senac?.provisorio;
+  $("#px-vazio").hidden = !!prox;
+  $("#px-corpo").hidden = !prox;
+  if (!prox) return;
+  $("#px-escopo").textContent = `Considera ${fmt(prox.considerados)} de ${fmt(prox.totalGeral)} alunos (${pct(prox.considerados, prox.totalGeral || 1)}): só os bairros com posição no mapa e 3 ou mais alunos. ` +
+    `Ficam de fora os bairros agrupados em "Outros", cidades de fora, área rural e "Não informado". Respeita os filtros ativos.`;
+  const cards = [
+    { icone: "🎯", titulo: "Perto do Senac", texto: `${f0(prox.pctAte3)}% dos alunos moram a até 3 km do Senac (${f0(prox.pctAte1)}% a até 1 km).` },
+    { icone: "📏", titulo: "Distância média", texto: `A distância média, ponderada pelo nº de alunos de cada bairro, é de ≈ ${fmtDist(prox.media)} em linha reta.` },
+  ];
+  const { maisPerto: p, maisLonge: l } = prox;
+  if (p.nome === l.nome) cards.push({ icone: "📍", titulo: "Único bairro", texto: `Só ${p.nome} tem posição e alunos suficientes: ≈ ${fmtDist(p.distSenac)} do Senac (${fmt(p.total)} alunos).` });
+  else cards.push(
+    { icone: "📍", titulo: "Bairro mais próximo", texto: `${p.nome}, a ≈ ${fmtDist(p.distSenac)} do Senac (${fmt(p.total)} alunos).` },
+    { icone: "🧭", titulo: "Bairro mais distante", texto: `${l.nome}, a ≈ ${fmtDist(l.distSenac)} do Senac (${fmt(l.total)} alunos).` });
+  renderInsightsEm($("#px-insights"), cards);
+  const ol = $("#px-rank");
+  ol.replaceChildren();
+  for (const b of prox.ranking) {
+    const li = document.createElement("li"), btn = document.createElement("button");
+    btn.type = "button";
+    const n = document.createElement("span"); n.textContent = b.nome;
+    const q = document.createElement("small"); q.textContent = `≈ ${fmtDist(b.distSenac)} · ${fmt(b.total)} alunos`;
+    btn.append(n, q);
+    btn.addEventListener("click", () => selecionarBairro(b.nome));
+    li.append(btn); ol.append(li);
+  }
+}
+
 /* ------------------------------------------------------------ insights */
-function renderInsights(lista) {
-  const raiz = $("#lista-insights");
+function renderInsights(lista) { renderInsightsEm($("#lista-insights"), lista); }
+function renderInsightsEm(raiz, lista) {
   raiz.replaceChildren();
   if (!lista.length) { const p = document.createElement("p"); p.className = "vazio-msg"; p.textContent = "Sem dados suficientes neste recorte. Tente limpar os filtros."; raiz.append(p); return; }
   for (const ins of lista) {
@@ -352,6 +395,11 @@ function renderizar() {
   estado.agg = agg;
   const grupos = classificar(aggMapa, geo);
   const emDiff = !!estado.dadosB;
+  // pino do Senac: distância em linha reta (Haversine) do Senac até o ponto de cada bairro e o centro de cada região
+  const sn = estado.camadas.senac && estado.senac ? estado.senac : null;
+  const distSenac = (it) => { const pos = posicaoBolha(it); return pos ? haversineKm([sn.lat, sn.lng], pos) : null; };
+  if (sn) for (const b of grupos.noMapa) b.distSenac = distSenac(b);
+  const prox = sn ? analisarProximidade(grupos.noMapa, aggMapa.total) : null;
 
   let itens, max, aggB = null;
   if (emDiff) {
@@ -374,6 +422,10 @@ function renderizar() {
     $("#kpi-comp").textContent = "";
   }
   const regioes = itensRegioes(aggMapa, aggB);
+  if (sn) {
+    for (const it of itens) if (it.distSenac == null) it.distSenac = distSenac(it);
+    for (const r of regioes) r.distSenac = r.centro ? haversineKm([sn.lat, sn.lng], r.centro) : null;
+  }
   const top = calcularTop5(regioes, aggMapa, emDiff);
   // Ilustrado: faixas por quantis calculadas só sobre o que está exibido (Áreas: regiões; Bairros: bairros), com os filtros atuais
   const faixas = emDiff ? {} : {
@@ -385,7 +437,15 @@ function renderizar() {
     modo: emDiff ? "diff" : "normal", max, totalGeral: aggMapa.total || 1,
     mostrarBairros: estado.camadas.bairros, mostrarAreas: estado.camadas.areas, regioes, faixas, rotuloA: estado.ano, rotuloB: estado.anoB,
     top5: { ativo: estado.top5 && !emDiff && top.itens.length > 0, modo: top.modo, ranks: top.ranks },
+    senac: { ativo: !!sn, aneis: !!sn && estado.aneis, dados: estado.senac, resumo: prox },
   });
+  // controles do pino: o botão existe se houver dados do Senac; "Anéis de distância" só com o pino ligado
+  $("#chip-senac").hidden = !estado.senac;
+  $("#chip-aneis").hidden = !sn;
+  $("#btn-senac").setAttribute("aria-pressed", String(!!sn));
+  $("#btn-aneis").setAttribute("aria-pressed", String(!!sn && estado.aneis));
+  $("#tab-proximidade").hidden = !sn;
+  if (!sn && estado.aba === "proximidade") abrirAba("resumo");
 
   // legenda: uma escala para cada camada ligada (Bairros / Áreas)
   const maxAreas = Math.max(1, ...regioes.map((r) => r.total));
@@ -419,7 +479,8 @@ function renderizar() {
   atualizarBairro(agg, grupos);
   atualizarTop5(top, aggMapa.total);
   atualizarRegiao(regioes, aggMapa.total);
-  atualizarEscola(aggMapa, regioes);
+  atualizarEscola(aggMapa, regioes, escolaEmFoco() ? prox : null);
+  atualizarProximidade(prox);
 
   // gráficos: cada um ignora o filtro da própria dimensão (para continuar mostrando as opções)
   const topBairros = [...aggMapa.porBairro.values()].filter((b) => b.tipo === "bairro" || b.tipo === "distrito").sort((a, b) => b.total - a.total).map((b) => [b.nome, b.total]);
@@ -428,6 +489,7 @@ function renderizar() {
     cursos: ranking1(dados, "c", filtrosParaIndices(dados, f, new Set(["cursos"]))), selCursos: f.cursos,
     escolas: ranking1(dados, "e", filtrosParaIndices(dados, f, new Set(["escolas"]))), selEscolas: f.escolas,
     dias: dados.dias,
+    prox: prox ? { rotulos: prox.faixas.map((f) => f.rot), valores: prox.faixas.map((f) => f.alunos), pcts: prox.faixas.map((f) => pct(f.alunos, prox.considerados)) } : null,
   });
 
   renderInsights(gerarInsights({ dados, agg, geo }));
@@ -548,6 +610,25 @@ async function iniciar() {
   for (const cb of document.querySelectorAll("[data-camada]")) cb.checked = !!estado.camadas[cb.dataset.camada];
   for (const cb of document.querySelectorAll("[data-camada]")) cb.addEventListener("change", () => { estado.camadas[cb.dataset.camada] = cb.checked; renderizar(); });
   addEventListener("resize", () => mapa.invalidar());
+  // Pino do Senac e anéis: DESLIGADOS em toda abertura (nada é salvo no navegador). Atalho: tecla P.
+  const alternarSenac = () => {
+    if (!estado.senac || !estado.agg) return;
+    estado.camadas.senac = !estado.camadas.senac;
+    if (!estado.camadas.senac) estado.aneis = false;
+    renderizar();
+    if (estado.camadas.senac) mapa.focarSenac(estado.senac, false);
+  };
+  $("#btn-senac").addEventListener("click", alternarSenac);
+  $("#btn-aneis").addEventListener("click", () => {
+    estado.aneis = !estado.aneis;
+    renderizar();
+    if (estado.aneis) mapa.focarSenac(estado.senac, true);
+  });
+  addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() !== "p" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+    if ($("#bv") || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) || e.target.isContentEditable) return;   // modal aberto ou digitando
+    alternarSenac();
+  });
 
   mapa = criarMapa($("#mapa"), { aoSelecionar: selecionarBairro, aoSelecionarRegiao: selecionarRegiao, aoSelecionarBairroNome: selecionarBairro });
   $("#esc-sel").addEventListener("change", (e) => {
@@ -561,7 +642,7 @@ async function iniciar() {
   $("#r-fechar").addEventListener("click", () => { estado.regiaoSel = null; renderizar(); mapa.reenquadrar(); });
   semPos = criarPainelSemPosicao($("#painel-sempos"), { aoSelecionar: selecionarBairro, local: ehLocal });
   $("#sp-fechar").addEventListener("click", () => { estado.camadas.semposicao = false; $("#chk-sempos").checked = false; renderizar(); });
-  graficos = criarGraficos({ bairros: $("#g-bairros"), cursos: $("#g-cursos"), escolas: $("#g-escolas"), dias: $("#g-dias") },
+  graficos = criarGraficos({ bairros: $("#g-bairros"), cursos: $("#g-cursos"), escolas: $("#g-escolas"), dias: $("#g-dias"), prox: $("#g-prox") },
     { bairro: (n) => selecionarBairro(n), curso: clicarCurso, escola: clicarEscola });
   ui = criarInterface($("#aba-filtros"), estado.filtros, renderizar);
   apresentacao = criarApresentacao({ montarPassos, aoSair: restaurarAposApresentacao });
@@ -595,8 +676,8 @@ async function iniciar() {
   abrirAba("resumo");
 
   try {
-    const [anos, geo, regioes] = await Promise.all([carregarAnos(), carregarGeografia(), carregarRegioes()]);
-    estado.anos = anos; estado.geo = geo; estado.regioes = regioes;
+    const [anos, geo, regioes, senac] = await Promise.all([carregarAnos(), carregarGeografia(), carregarRegioes(), carregarSenac()]);
+    estado.anos = anos; estado.geo = geo; estado.regioes = regioes; estado.senac = senac;
     mapa.setSilhueta(geo.silhueta);
     const sel = $("#sel-ano"), comp = $("#sel-comparar");
     for (const a of anos) { sel.add(new Option(a, a)); comp.add(new Option("vs " + a, a)); }

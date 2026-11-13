@@ -1,0 +1,9 @@
+{
+  "nome": "Senac Barretos",
+  "endereco": "Avenida 21, 087, Centro, Barretos - SP, CEP 14781-344",
+  "lat": -20.55378781775886,
+  "lng": -48.562549505636554,
+  "provisorio": true,
+  "fonte": "provisório: trecho da Avenida Vinte e Um (Av. 21) no Centro, segundo o Nominatim; número 87 não localizado",
+  "nota": "Valor provisório. Edite lat/lng à mão com o ponto exato e apague \"provisorio\"."
+}

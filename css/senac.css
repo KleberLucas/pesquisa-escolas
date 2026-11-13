@@ -1,0 +1,75 @@
+/* Pino do Senac Barretos, anéis de distância, cartão e controles. Nos dois visuais (data-visual) e nos dois temas (data-theme). */
+
+/* ---------- Botões "Senac Barretos" e "Anéis de distância" (mesmo estilo dos chips Áreas/Bairros) ---------- */
+.chip-toggle button {
+  font: inherit; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; cursor: pointer;
+  color: var(--texto); background: var(--superficie); border: 1px solid var(--borda); border-radius: 999px; transition: var(--t);
+}
+.chip-toggle button:hover { border-color: var(--primaria); }
+.chip-toggle button:focus-visible { outline: 3px solid var(--destaque); outline-offset: 2px; }
+.chip-toggle button[aria-pressed="true"] { background: var(--primaria); color: var(--primaria-txt); border-color: var(--primaria); }
+.chip-toggle .mini-pino { flex: none; filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff); }
+.chip-toggle[hidden] { display: none; }
+:root[data-visual="ilustrado"] .chip-toggle button { font-family: var(--fonte-texto); font-weight: 600; border: 2px solid var(--moldura); background: #f6dd9c; color: var(--texto); }
+:root[data-visual="ilustrado"][data-theme="dark"] .chip-toggle button { background: #43331b; }
+:root[data-visual="ilustrado"] .chip-toggle button[aria-pressed="true"] { background: linear-gradient(180deg, var(--verde-faixa), var(--verde-faixa-2)); color: #fff4d6; border-color: var(--madeira-borda); }
+
+/* ---------- Pino no mapa ---------- */
+.pino-senac-wrap { background: none; border: 0; overflow: visible; border-radius: 12px; }
+.pino-senac-wrap:focus-visible { outline: 3px solid var(--destaque); outline-offset: 3px; }
+.pino-senac { position: relative; width: 36px; height: 46.8px; cursor: pointer; }
+.pino-senac svg { display: block; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 40%)); transition: transform .15s; transform-origin: 50% 100%; }
+.pino-senac-wrap:hover svg, .pino-senac-wrap:focus-visible svg { transform: scale(1.08); }
+.pino-senac-etq {
+  position: absolute; left: 40px; top: 7px; white-space: nowrap; pointer-events: none;
+  font: 700 11.5px/1 var(--fonte-texto); padding: 5px 10px; color: var(--texto);
+  background: var(--superficie); border: 1px solid var(--borda); border-radius: 999px; box-shadow: var(--sombra-p);
+}
+/* Ilustrado: faixa verde com pontas em "V", texto creme (mesmo recurso da fita do cabeçalho) */
+:root[data-visual="ilustrado"] .pino-senac-etq {
+  left: 38px; top: 8px; padding: 5px 20px 6px; font: 400 11.5px/1 var(--fonte-titulo); letter-spacing: .03em; color: #fff4d6; border: 0; border-radius: 0; box-shadow: none;
+  background: linear-gradient(180deg, var(--verde-faixa), var(--verde-faixa-2));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 50%, 100% 100%, 0 100%, 9px 50%);
+}
+
+/* ---------- Anéis ---------- */
+.anel-rot-wrap { background: none; border: 0; }
+.anel-rot {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none;
+  font: 600 10.5px/1.2 var(--fonte-texto); color: var(--texto); padding: 1px 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--superficie) 90%, transparent); border: 1px solid var(--borda);
+}
+:root[data-visual="ilustrado"] .anel-rot { border: 1.5px solid var(--moldura); font-weight: 700; }
+
+/* ---------- Cartão (hover = tooltip, clique/Enter = popup) ---------- */
+.tip-senac { white-space: normal; max-width: 290px; }
+.leaflet-tooltip.tip small.dist-senac, .dist-senac { color: var(--primaria); font-weight: 600; }
+.sub.dist-senac { font-size: 13px; margin: 2px 0 6px; }
+.popup-senac .leaflet-popup-content-wrapper { background: var(--superficie); color: var(--texto); border: 1px solid var(--borda); border-radius: var(--raio-p); box-shadow: var(--sombra); }
+.popup-senac .leaflet-popup-tip { background: var(--superficie); border: 1px solid var(--borda); box-shadow: none; }
+.popup-senac .leaflet-popup-content { margin: 11px 14px; font-size: 13px; line-height: 1.4; }
+.popup-senac strong { font-family: var(--fonte-titulo); font-size: 14px; }
+.popup-senac small { display: block; color: var(--texto-2); font-size: 12px; margin-top: 4px; }
+.popup-senac a.leaflet-popup-close-button { color: var(--texto-2); }
+:root[data-visual="ilustrado"] .popup-senac .leaflet-popup-content-wrapper {
+  background-color: var(--superficie); background-image: var(--papel); border: 2px solid var(--moldura);
+  border-radius: 14px 20px 12px 18px / 18px 12px 20px 14px; box-shadow: inset 0 0 0 3px rgb(255 247 222 / 38%), var(--sombra);
+}
+:root[data-visual="ilustrado"][data-theme="dark"] .popup-senac .leaflet-popup-content-wrapper { box-shadow: inset 0 0 0 3px rgb(0 0 0 / 25%), var(--sombra); }
+:root[data-visual="ilustrado"] .popup-senac .leaflet-popup-tip { background: var(--superficie); border-color: var(--moldura); }
+:root[data-visual="ilustrado"] .popup-senac { font-family: var(--fonte-texto); }
+:root[data-visual="ilustrado"] .popup-senac strong { font-family: var(--fonte-texto); font-weight: 700; }
+
+/* ---------- Aba Proximidade ---------- */
+#aba-proximidade .graf { height: 220px; }
+#aba-proximidade .insights { display: grid; gap: 8px; }
+#aba-proximidade .rank-bairros { max-height: none; }
+#aba-proximidade .selo { display: block; margin: 6px 0; }
+
+/* Com a aba "Proximidade" são 6 abas: aperta o espaçamento para caberem no painel (no celular as abas continuam rolando) */
+.dock .abas:has(#tab-proximidade:not([hidden])) { gap: 0; padding-inline: 6px; }
+.dock .abas:has(#tab-proximidade:not([hidden])) button { padding-inline: 8px; font-size: 13px; }
+:root[data-visual="ilustrado"] .dock .abas:has(#tab-proximidade:not([hidden])) button { padding-inline: 8px; }
+@media (min-width: 901px) {   /* desktop: as abas quebram em 2 linhas em vez de ficarem cortadas (no celular elas rolam) */
+  .dock .abas:has(#tab-proximidade:not([hidden])) { flex-wrap: wrap; overflow-x: visible; row-gap: 2px; }
+}

@@ -50,6 +50,15 @@ export function criarGraficos(el, cb) {
         onHover: (e, els) => { e.native.target.style.cursor = els.length ? "pointer" : "default"; },
       },
     });
+    if (el.prox) inst.prox = new Chart(el.prox, {   // alunos por faixa de distância até o Senac (barras verticais)
+      type: "bar",
+      data: { labels: [], datasets: [{ data: [], borderRadius: 6 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.parsed.y} alunos (${c.dataset.pcts?.[c.dataIndex] ?? ""})` } } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } },
+      },
+    });
     inst.dias = new Chart(el.dias, {
       type: "line",
       data: { labels: [], datasets: [{ data: [], fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }] },
@@ -97,6 +106,13 @@ export function criarGraficos(el, cb) {
     inst.dias.data.datasets[0].borderColor = css("--primaria");
     const primaria = css("--primaria");
     inst.dias.data.datasets[0].backgroundColor = alfa(primaria.startsWith("#") && primaria.length === 7 ? primaria : "#0a5fb4", 0.18);
+    if (inst.prox) {
+      const px = d.prox || { rotulos: [], valores: [], pcts: [] };
+      inst.prox.data.labels = px.rotulos;
+      inst.prox.data.datasets[0].data = px.valores;
+      inst.prox.data.datasets[0].pcts = px.pcts;
+      inst.prox.data.datasets[0].backgroundColor = css("--seq-3");
+    }
     for (const c of Object.values(inst)) c.update();
   }
 
